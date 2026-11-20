@@ -12,7 +12,10 @@ const html = fs.readFileSync(__dirname + "/index.html", "utf8");
 const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 
 // A tiny fake page so the app's script can run inside node.
+// sharedStorage persists across loadApp calls so settings round-trip can be tested.
+const sharedStorage = {};
 function loadApp(store, date){
+  sharedStorage["habitStore.v1"] = JSON.stringify(store);
   const nodes = {};
   const node = id => nodes[id] || (nodes[id] = {
     value: "", textContent: "", innerHTML: "", hidden: false, checked: false,
@@ -29,14 +32,21 @@ function loadApp(store, date){
     body: { style: {} },
     hidden: false
   };
-  const fakeStorage = { getItem: () => JSON.stringify(store), setItem(){}, removeItem(){} };
+  const fakeStorage = {
+    getItem: k => sharedStorage[k],
+    setItem: (k, v) => { sharedStorage[k] = v; },
+    removeItem: k => { delete sharedStorage[k]; }
+  };
   const fakeLocation = { search: date ? "?date=" + date : "" };
   const fakeWindow = { addEventListener(){} };
 
   const build = new Function("document", "localStorage", "location", "window",
     script + "\nreturn {data, computeHabitStreak, computeStreak, computeBestStreak," +
     " restDaysUsed, countCompleteDays, isDayKept, isHabitDone, dayWord, dayExercises," +
-    " writeDayExercises, lastWorkoutNames, repeatLastWorkout};");
+    " writeDayExercises, lastWorkoutNames, repeatLastWorkout," +
+    " playClick, playTick, playConfirm, playDelete, playError, playBillStep," +
+    " playBillDing, playBillTear, audioReady, loadSettings, saveSettings, settings," +
+    " vibrate};");
   return build(fakeDocument, fakeStorage, fakeLocation, fakeWindow);
 }
 
@@ -224,10 +234,72 @@ console.log("\nRepeat last workout - copies the most recent earlier list, all un
   check("so the day is not done yet", app.isHabitDone(app.data.habits[0], day(11)), false);
 }
 {
+  // Today already has an entry with a tick; repeat must preserve ticks for
+  // exercises that are in both lists, and start the others unticked.
+  const store = { habits: [habit({ id:"g", type:"gym" })], log: {
+    [day(10)]: { g: { "Bench Press": true } },
+    [day(11)]: { g: { "Bench Press": true, "Deadlift": false } }
+  }};
+  const app = loadApp(store, day(11));
+  app.repeatLastWorkout("g", day(11));
+  check("repeat keeps tick for shared exercise",
+    app.data.log[day(11)].g, { "Bench Press": true });
+  check("preserved tick completes the day",
+    app.isHabitDone(app.data.habits[0], day(11)), true);
+}
+{
   // Fully completed days are what the order number counts.
   const store = { habits: [habit({})], log: { [day(9)]: {h1:true}, [day(10)]: {h1:true}, [day(11)]: {h1:false} } };
   const app = loadApp(store, day(15));
   check("two fully completed days", app.countCompleteDays(), 2);
+}
+
+// =================================================================
+console.log("\nSound & vibration");
+{
+  // node has neither AudioContext nor navigator.vibrate
+  const app = loadApp({ habits: [], log: {} });
+  check("audioReady returns false with no AudioContext", app.audioReady(), false);
+  let threw = false;
+  try{
+    app.playClick();
+    app.playTick(true);
+    app.playTick(false);
+    app.playConfirm();
+    app.playDelete();
+    app.playError();
+    app.playBillStep();
+    app.playBillDing();
+    app.playBillTear();
+    app.vibrate(8);
+    app.vibrate([20,40,20]);
+  }catch(e){ threw = true; }
+  check("no sound/vibrate function throws without AudioContext or navigator", threw, false);
+}
+{
+  // settings are saved in a separate key and read back
+  const app1 = loadApp({ habits: [], log: {} });
+  check("default sound on", app1.settings.sound, true);
+  check("default vibration on", app1.settings.vibration, true);
+  app1.settings.sound = false;
+  app1.settings.vibration = false;
+  app1.saveSettings();
+  const app2 = loadApp({ habits: [], log: {} });
+  check("sound off read back", app2.settings.sound, false);
+  check("vibration off read back", app2.settings.vibration, false);
+  // back to defaults for other tests
+  app2.settings.sound = true;
+  app2.settings.vibration = true;
+  app2.saveSettings();
+}
+{
+  // nothing plays when sound is off: settings.sound = false must short-circuit
+  const app = loadApp({ habits: [], log: {} });
+  app.settings.sound = false;
+  // creating the context must not happen while sound is off
+  app.playClick();
+  app.playConfirm();
+  check("audio context not created while sound off", app.audioReady(), false);
 }
 
 console.log("\n" + pass + " passed, " + fail + " failed");

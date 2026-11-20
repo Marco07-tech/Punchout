@@ -129,7 +129,11 @@ button{background:none;border:0;cursor:pointer}
 @keyframes print{from{transform:translateY(-100%)}}
 @keyframes blink{50%{opacity:.2}}
 @keyframes fade{from{opacity:0}}
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* Settings panel overlay */
+.settings-panel{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:24px 16px}
+.settings-panel[hidden]{display:none!important}
+.settings-card{max-width:330px;width:100%}
 </style>
 </head>
 <body>
@@ -158,7 +162,7 @@ button{background:none;border:0;cursor:pointer}
 <main class="screen on" id="home">
   <header class="top">
     <div class="t"><small class="up">Punchout</small><b>Today</b></div>
-    <button class="sq dk" aria-label="Profile"><svg class="i"><use href="#user"/></svg></button>
+    <button class="sq dk" data-go="settings" aria-label="Settings"><svg class="i"><use href="#user"/></svg></button>
   </header>
 
   <div class="meta up"><span id="todayDate">—</span><span class="order" id="orderNo">Order #0000</span></div>
@@ -270,6 +274,22 @@ button{background:none;border:0;cursor:pointer}
     <div class="pb"><i></i><span class="slot"></span><i></i></div>
     <div class="pw" id="paperWin"></div>
     <button class="btn" id="billClose">Close <svg class="i"><use href="#back"/></svg></button>
+  </div>
+</div>
+
+<!-- ================= SETTINGS PANEL ================= -->
+<div class="settings-panel" id="settingsPanel" hidden role="dialog" aria-modal="true" aria-label="Settings">
+  <div class="card settings-card">
+    <div class="top">
+      <button class="sq" id="settingsClose" aria-label="Close"><svg class="i"><use href="#back"/></svg></button>
+      <div class="t"><b>Settings</b></div>
+      <div class="sq"></div>
+    </div>
+    <div class="lab up"><label for="settingSound">Sound</label></div>
+    <label class="chip"><input type="checkbox" id="settingSound" checked>On</label>
+    <div class="lab up"><label for="settingVibration">Vibration</label></div>
+    <label class="chip"><input type="checkbox" id="settingVibration" checked>On</label>
+    <button class="btn" id="settingsDone" style="margin-top:28px">Close <svg class="i"><use href="#back" style="transform:scaleX(-1);transform-origin:center"/></svg></button>
   </div>
 </div>
 
@@ -580,12 +600,15 @@ function show(id){
   scrollTo(0, 0);
 }
 document.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => {
+  playClick(); vibrate(8);
   if(b.dataset.go === "newHabit") resetForm();   // "+" always opens an empty form
+  if(b.dataset.go === "settings"){ openSettings(); return; }
   show(b.dataset.go);
 }));
 // Confirm writes the picked names into the target day's list and returns Home.
 $("#confirm").addEventListener("click", () => {
   if(!pickerTarget){ show("home"); return; }
+  playClick(); vibrate(8);
   writeDayExercises(pickerTarget.key, pickerTarget.habitId, [...picked], dayEntry(pickerTarget.key, pickerTarget.habitId));
   pickerTarget = null;
   saveData();
@@ -599,6 +622,7 @@ let editingId = null;
 function formError(msg){
   $("#formError").hidden = !msg;
   $("#formErrorText").textContent = msg || "";
+  if(msg){ playError(); vibrate([20,40,20]); }
 }
 
 // Read what is in the form right now.
@@ -674,7 +698,11 @@ $("#saveHabit").addEventListener("click", () => {
   }
   saveData();
   resetForm();
+  playConfirm(); vibrate(8);
   show("home");
+});
+$("#newHabit").addEventListener("click", e => {
+  if(e.target.closest(".chip, .tile")){ playClick(); vibrate(8); }
 });
 
 /* ---------- 7. THE GYM EXERCISE PICKER (names only) ---------- */
@@ -755,11 +783,13 @@ function formatDay(key){
   return parseKey(key).toLocaleDateString("en-GB", {weekday:"long", day:"numeric", month:"long"});
 }
 
-// Copy the most recent earlier workout into a day, every exercise unticked.
+// Copy the most recent earlier workout into a day. Exercises that are in both
+// today's entry and the last workout keep their ticks; everything else starts
+// unticked.
 function repeatLastWorkout(habitId, key){
   const names = lastWorkoutNames(habitId, key);
   if(!names) return;
-  writeDayExercises(key, habitId, names, null);
+  writeDayExercises(key, habitId, names, dayEntry(key, habitId));
   saveData();
   renderHome();
 }
@@ -861,11 +891,16 @@ $("#habitList").addEventListener("change", e => {
   const doneBefore = allDoneToday(today);            // was the whole day already done?
   if(h.type === "gym") setDone(h, today, box.checked, exercise);
   else setDone(h, today, box.checked);
+  playTick(box.checked);
+  vibrate(15);
   saveData();
   renderHome();
   focusCheckbox(habitId, exercise);                  // keep keyboard focus where it was
   // The bill opens only when THIS tick finished the day.
-  if(!doneBefore && allDoneToday(today)) setTimeout(openBill, 600);
+  if(!doneBefore && allDoneToday(today)){
+    vibrate([30,40,30]);
+    setTimeout(openBill, 600);
+  }
 });
 
 // Clicks inside the habit list. The empty-state button is drawn later by
@@ -882,12 +917,13 @@ $("#habitList").addEventListener("click", e => {
   const editBtn = e.target.closest("[data-edit]");
   if(editBtn){
     const h = data.habits.find(x => x.id === editBtn.dataset.edit);
-    if(h) openEdit(h);
+    if(h){ openEdit(h); playClick(); vibrate(8); }
     return;
   }
   // Gym card actions: open the picker for today, or copy the last workout.
   const act = e.target.closest("[data-act]");
   if(act){
+    playClick(); vibrate(8);
     if(act.dataset.act === "choose") openPicker(act.dataset.id, todayKey());
     else if(act.dataset.act === "repeat") repeatLastWorkout(act.dataset.id, todayKey());
     return;
@@ -898,6 +934,7 @@ $("#habitList").addEventListener("click", e => {
   const h = data.habits.find(x => x.id === btn.dataset.id);
   if(!h) return;
   if(!confirm('Delete "' + h.name + '"?')) return;
+  playDelete(); vibrate(40);
   data.habits = data.habits.filter(x => x.id !== h.id);
   saveData();
   renderHome();
@@ -956,12 +993,202 @@ function openBill(){
   setTimeout(() => $("#printer").classList.remove("printing"), 3300);
   document.body.style.overflow = "hidden";
   $("#billClose").focus({preventScroll:true});
+  startBillSounds();
 }
-function closeBill(){ $("#bill").classList.remove("open"); document.body.style.overflow = ""; }
+function closeBill(){
+  $("#bill").classList.remove("open");
+  document.body.style.overflow = "";
+  stopBillSounds();
+}
 
 $("#billBtn").addEventListener("click", openBill);
 $("#billClose").addEventListener("click", closeBill);
-document.addEventListener("keydown", e => { if (e.key === "Escape") closeBill(); });
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") {
+    if(!$("#settingsPanel").hidden){ closeSettings(); return; }
+    closeBill();
+  }
+});
+
+/* ---------- 11. SOUND & VIBRATION ---------- */
+
+const SETTINGS_KEY = "punchout.settings.v1";
+let settings = { sound: true, vibration: true };
+
+function loadSettings(){
+  try{
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if(raw){
+      const p = JSON.parse(raw);
+      if(p && typeof p === "object"){
+        settings.sound = p.sound !== false;
+        settings.vibration = p.vibration !== false;
+      }
+    }
+  }catch(e){
+    settings = { sound: true, vibration: true };
+  }
+}
+function saveSettings(){
+  try{ localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }
+  catch(e){}
+}
+
+let audioCtx = null;
+let masterGain = null;
+let billSounds = [];
+
+function audioReady(){
+  if(audioCtx && masterGain) return true;
+  try{
+    const Ctor = window.AudioContext || window.webkitAudioContext;
+    if(!Ctor) return false;
+    audioCtx = new Ctor();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.15;
+    masterGain.connect(audioCtx.destination);
+  }catch(e){
+    audioCtx = null; masterGain = null;
+  }
+  return !!audioCtx;
+}
+function resumeAudio(){
+  try{
+    if(audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+  }catch(e){}
+}
+function vibrate(pattern){
+  if(!settings.vibration) return;
+  try{
+    const nav = window && window.navigator;
+    if(nav && nav.vibrate) nav.vibrate(pattern);
+  }catch(e){}
+}
+function playTone(freq, type, dur, gainVol){
+  if(!settings.sound || !audioReady()) return;
+  try{
+    const t = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(gainVol, t);
+    g.gain.linearRampToValueAtTime(0, t + dur);
+    osc.connect(g);
+    g.connect(masterGain);
+    osc.start(t);
+    osc.stop(t + dur);
+  }catch(e){}
+}
+function playNoise(dur, gainVol){
+  if(!settings.sound || !audioReady()) return;
+  try{
+    const t = audioCtx.currentTime;
+    const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * dur, audioCtx.sampleRate);
+    const d = buf.getChannelData(0);
+    for(let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.5;
+    const b = audioCtx.createBufferSource();
+    const g = audioCtx.createGain();
+    b.buffer = buf;
+    b.connect(g);
+    g.gain.setValueAtTime(gainVol, t);
+    g.gain.linearRampToValueAtTime(0, t + dur);
+    g.connect(masterGain);
+    b.start(t);
+    b.stop(t + dur);
+  }catch(e){}
+}
+
+function playClick(){
+  if(!settings.sound) return;
+  resumeAudio();
+  playTone(110, "square", 0.05, 0.5);
+}
+function playTick(rising){
+  if(!settings.sound) return;
+  resumeAudio();
+  if(rising){
+    playTone(660, "sine", 0.12, 0.5);
+    setTimeout(() => playTone(990, "sine", 0.12, 0.5), 60);
+  }else{
+    playTone(330, "sine", 0.12, 0.4);
+  }
+}
+function playConfirm(){
+  if(!settings.sound) return;
+  resumeAudio();
+  playTone(520, "sine", 0.15, 0.5);
+  setTimeout(() => playTone(780, "sine", 0.15, 0.5), 90);
+}
+function playDelete(){
+  if(!settings.sound) return;
+  resumeAudio();
+  playTone(90, "sawtooth", 0.25, 0.5);
+}
+function playError(){
+  if(!settings.sound) return;
+  resumeAudio();
+  playTone(120, "square", 0.15, 0.5);
+  setTimeout(() => playTone(90, "square", 0.15, 0.5), 70);
+}
+function playBillStep(){
+  playNoise(0.06, 0.3);
+}
+function playBillDing(){
+  playTone(980, "sine", 0.35, 0.5);
+  setTimeout(() => playTone(1175, "sine", 0.35, 0.5), 120);
+}
+function playBillTear(){
+  playNoise(0.18, 0.35);
+}
+
+function stopBillSounds(){
+  billSounds.forEach(t => clearTimeout(t));
+  billSounds = [];
+}
+function startBillSounds(){
+  stopBillSounds();
+  resumeAudio();
+  const stepMs = 80;
+  const steps = 40;  // 3.2 s / 80 ms
+  let step = 0;
+  function next(){
+    if(step >= steps){
+      playBillDing();
+      playBillTear();
+      vibrate(60);
+      return;
+    }
+    playBillStep();
+    if(step % 2 === 0) vibrate(6);  // a 6 ms pulse about every 160 ms
+    step++;
+    billSounds.push(setTimeout(next, stepMs));
+  }
+  next();
+}
+
+function openSettings(){
+  loadSettings();
+  $("#settingSound").checked = settings.sound;
+  $("#settingVibration").checked = settings.vibration;
+  $("#settingsPanel").hidden = false;
+  $("#settingsClose").focus({preventScroll:true});
+}
+function closeSettings(){
+  $("#settingsPanel").hidden = true;
+}
+$("#settingSound").addEventListener("change", () => {
+  settings.sound = $("#settingSound").checked;
+  saveSettings();
+  playClick();
+});
+$("#settingVibration").addEventListener("change", () => {
+  settings.vibration = $("#settingVibration").checked;
+  saveSettings();
+  playClick();
+});
+$("#settingsClose").addEventListener("click", closeSettings);
+$("#settingsDone").addEventListener("click", closeSettings);
 
 /* ---------- 10. START ---------- */
 // If the app is left open overnight, "today" changes - redraw when we come back.
@@ -972,6 +1199,7 @@ function checkNewDay(){
 document.addEventListener("visibilitychange", () => { if(!document.hidden) checkNewDay(); });
 window.addEventListener("focus", checkNewDay);
 
+loadSettings();
 renderHome();
 </script>
 </body>
