@@ -50,6 +50,7 @@ button{background:none;border:0;cursor:pointer}
 .chip.dk.sel{background:var(--ink);color:var(--paper)}
 .chip:has(:focus-visible),.tile:has(:focus-visible){outline:3px solid var(--ink);outline-offset:3px}
 .chip.dash{border-style:dashed;box-shadow:none;text-transform:none}
+.chip:has(input:disabled){opacity:.55;cursor:not-allowed}
 .days .chip{padding:10px 0;font-size:15px}
 .btn:active,.sq:active,.chip:active,.tile:active,.nv:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--ink)}
 
@@ -80,6 +81,9 @@ button{background:none;border:0;cursor:pointer}
 .del{width:38px;height:38px;display:grid;place-items:center;flex-shrink:0;background:var(--w);border:3px solid var(--ink);box-shadow:2px 2px 0 var(--ink)}
 .del .i{width:18px;height:18px}
 .del:active{transform:translate(2px,2px);box-shadow:0 0 0 var(--ink)}
+/* the small action buttons on a gym card */
+.acts{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.acts .btn.sm{margin-top:0}
 .routine{margin-top:14px;padding:12px;background:var(--paper);border:3px solid var(--ink)}
 .rh{display:flex;justify-content:space-between;padding-bottom:8px;margin-bottom:10px;border-bottom:3px solid #D8C9B2;font-size:11px}
 .ex{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding:10px 12px;background:var(--w);border:3px solid var(--ink);box-shadow:2px 2px 0 var(--ink);font-weight:700;cursor:pointer}
@@ -145,6 +149,7 @@ button{background:none;border:0;cursor:pointer}
 <symbol id="info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></symbol>
 <symbol id="receipt" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/></symbol>
 <symbol id="trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6M14 11v6"/></symbol>
+<symbol id="pencil" viewBox="0 0 24 24"><path d="M4 20h4L20 8l-4-4L4 16v4zM14 6l4 4"/></symbol>
 </svg>
 
 <div class="app">
@@ -183,7 +188,7 @@ button{background:none;border:0;cursor:pointer}
 <main class="screen" id="newHabit">
   <header class="top">
     <button class="sq" data-go="home" aria-label="Back"><svg class="i"><use href="#back"/></svg></button>
-    <div class="t"><small class="up">Punchout</small><b>New habit</b></div>
+    <div class="t"><small class="up">Punchout</small><b id="habitTitle">New habit</b></div>
   </header>
   <div class="row2" style="align-items:center;font-size:12px"><span class="up">Item registration // Mod. 0042</span><span class="tag up" style="margin:0;justify-self:end;background:#EADFCC">Status: new entry</span></div>
 
@@ -203,7 +208,6 @@ button{background:none;border:0;cursor:pointer}
     <label class="chip"><input type="radio" name="type" value="normal" checked>Normal</label>
     <label class="chip"><input type="radio" name="type" value="gym">Gym</label>
   </div>
-  <button class="btn" id="gymRow" data-go="picker" style="margin-top:14px" hidden><svg class="i"><use href="#gym"/></svg>Choose exercises <span id="pickCount" class="tag" style="margin:0">0 selected</span></button>
 
   <div class="lab up"><span>Select days</span><span style="font-weight:500">Tap to turn on or off</span></div>
   <div class="days">
@@ -216,14 +220,14 @@ button{background:none;border:0;cursor:pointer}
 
   <div class="note" id="formError" hidden><svg class="i"><use href="#info"/></svg><span id="formErrorText"></span></div>
 
-  <button class="btn" id="saveHabit" style="margin-top:28px;font-size:22px">Save habit <svg class="i"><use href="#receipt"/></svg></button>
+  <button class="btn" id="saveHabit" style="margin-top:28px;font-size:22px"><span id="saveLabel">Save habit</span> <svg class="i"><use href="#receipt"/></svg></button>
   <p class="foot up">&#9632; Printed &amp; sealed in store &#9632;</p>
 </main>
 
 <!-- ================= GYM EXERCISE PICKER ================= -->
 <main class="screen" id="picker">
   <header class="top">
-    <button class="sq" data-go="newHabit" aria-label="Back"><svg class="i"><use href="#back"/></svg></button>
+    <button class="sq" data-go="home" aria-label="Back"><svg class="i"><use href="#back"/></svg></button>
     <div class="t"><small class="up">Order slip #042 &bull; Habit type: gym</small><b>Select exercises</b></div>
     <span class="sq" style="background:var(--blue)"><svg class="i"><use href="#gym"/></svg></span>
   </header>
@@ -327,9 +331,6 @@ function fixHabit(h){
     type: h.type === "gym" ? "gym" : "normal",
     days: [...new Set(days)].sort((a,b) => a-b),
     reminder: (typeof h.reminder === "string" && /^\d{2}:\d{2}$/.test(h.reminder)) ? h.reminder : "07:15",
-    exercises: (h.type === "gym" && Array.isArray(h.exercises))
-      ? h.exercises.filter(x => typeof x === "string" && x.trim()).map(x => x.trim())
-      : [],
     createdAt: isDateKey(h.createdAt) ? h.createdAt : todayKey()
   };
 }
@@ -372,15 +373,50 @@ function scheduledOn(key){
   const wd = weekdayOf(key);
   return data.habits.filter(h => h.days.indexOf(wd) >= 0 && key >= h.createdAt);
 }
-// Is one habit done on one day? A gym habit needs all of its exercises ticked.
-function isHabitDone(h, key){
-  const entry = (data.log[key] || {})[h.id];
-  if(!entry) return false;
-  if(h.type === "gym"){
-    if(!h.exercises.length) return false;
-    return h.exercises.every(ex => entry[ex] === true);
+// The exercise object stored for one gym habit on one day (null when nothing was chosen).
+function dayEntry(key, habitId){
+  const e = (data.log[key] || {})[habitId];
+  return (e && typeof e === "object" && !Array.isArray(e)) ? e : null;
+}
+// The names chosen for one gym habit on one day ([] before anything was chosen).
+function dayExercises(key, habitId){
+  const e = dayEntry(key, habitId);
+  return e ? Object.keys(e) : [];
+}
+// Save the chosen names for one day. Ticks that stay selected are kept from
+// prevEntry; every other name starts unticked. An empty list removes the entry.
+function writeDayExercises(key, habitId, names, prevEntry){
+  if(!data.log[key]) data.log[key] = {};
+  if(!names.length){
+    delete data.log[key][habitId];
+  }else{
+    const entry = {};
+    names.forEach(n => { entry[n] = !!(prevEntry && prevEntry[n] === true); });
+    data.log[key][habitId] = entry;
   }
-  return entry === true;
+  if(!Object.keys(data.log[key]).length) delete data.log[key];
+}
+// The most recent day strictly before `beforeKey` that has an exercise list
+// for this gym habit, or null when there is none (the button stays hidden).
+function lastWorkoutNames(habitId, beforeKey){
+  const keys = Object.keys(data.log)
+    .filter(k => isDateKey(k) && k < beforeKey).sort().reverse();
+  for(const k of keys){
+    const entry = dayEntry(k, habitId);
+    if(entry && Object.keys(entry).length) return Object.keys(entry);
+  }
+  return null;
+}
+// Is one habit done on one day? A gym habit needs every exercise of THAT
+// DAY'S list ticked; before a list exists it counts as pending (not done).
+function isHabitDone(h, key){
+  if(h.type === "gym"){
+    const entry = dayEntry(key, h.id);
+    if(!entry) return false;
+    const names = Object.keys(entry);
+    return names.length > 0 && names.every(n => entry[n] === true);
+  }
+  return (data.log[key] || {})[h.id] === true;
 }
 // How a day went: how many habits were scheduled and how many are done.
 function dayStatus(key){
@@ -401,7 +437,8 @@ function setDone(h, key, done, exercise){
   const day = data.log[key];
   if(h.type === "gym"){
     if(!day[h.id] || typeof day[h.id] !== "object") day[h.id] = {};
-    if(done) day[h.id][exercise] = true; else delete day[h.id][exercise];
+    // Keep the key with false so an unticked exercise stays in the day's list.
+    day[h.id][exercise] = done === true;
     if(!Object.keys(day[h.id]).length) delete day[h.id];
   }else{
     if(done) day[h.id] = true; else delete day[h.id];
@@ -542,15 +579,22 @@ function show(id){
   if(id === "home") renderHome();
   scrollTo(0, 0);
 }
-document.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => show(b.dataset.go)));
-$("#confirm").addEventListener("click", () => show("newHabit"));
-document.querySelectorAll('input[name="type"]').forEach(r =>
-  r.addEventListener("change", () => {
-    const checked = document.querySelector('input[name="type"]:checked');
-    $("#gymRow").hidden = !(checked && checked.value === "gym");
-  }));
+document.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => {
+  if(b.dataset.go === "newHabit") resetForm();   // "+" always opens an empty form
+  show(b.dataset.go);
+}));
+// Confirm writes the picked names into the target day's list and returns Home.
+$("#confirm").addEventListener("click", () => {
+  if(!pickerTarget){ show("home"); return; }
+  writeDayExercises(pickerTarget.key, pickerTarget.habitId, [...picked], dayEntry(pickerTarget.key, pickerTarget.habitId));
+  pickerTarget = null;
+  saveData();
+  show("home");
+});
 
 /* ---------- 6. THE NEW HABIT FORM ---------- */
+// The habit being edited right now, or null when the form creates a new one.
+let editingId = null;
 // Show (or hide) the red note under the form.
 function formError(msg){
   $("#formError").hidden = !msg;
@@ -568,8 +612,7 @@ function readForm(){
     icon: iconEl ? iconEl.value : "drop",
     type: (typeEl && typeEl.value === "gym") ? "gym" : "normal",
     days: days,
-    reminder: $("#reminder").value || "07:15",
-    exercises: [...picked]
+    reminder: $("#reminder").value || "07:15"
   };
 }
 
@@ -578,14 +621,32 @@ function resetForm(){
   $("#habitName").value = "";
   const icon = document.querySelector('input[name="icon"][value="drop"]'); if(icon) icon.checked = true;
   const type = document.querySelector('input[name="type"][value="normal"]'); if(type) type.checked = true;
-  $("#gymRow").hidden = true;
   document.querySelectorAll(".days input[type=checkbox]").forEach(c => c.checked = true);
   $("#reminder").value = "07:15";
   picked.clear();                 // the picker selection is reset too
   group = "Chest";
   $("#search").value = "";
+  editingId = null;               // back to "create" mode
+  document.querySelectorAll('input[name="type"]').forEach(r => r.disabled = false);
+  $("#habitTitle").textContent = "New habit";
+  $("#saveLabel").textContent = "Save habit";
   formError("");
   renderGroups(); renderItems(); renderSlip();
+}
+
+// Fill the form with an existing habit so it can be changed in place.
+function openEdit(h){
+  resetForm();
+  editingId = h.id;
+  $("#habitName").value = h.name;
+  const icon = document.querySelector('input[name="icon"][value="' + esc(h.icon) + '"]'); if(icon) icon.checked = true;
+  const type = document.querySelector('input[name="type"][value="' + esc(h.type) + '"]'); if(type) type.checked = true;
+  document.querySelectorAll(".days input[type=checkbox]").forEach(c => c.checked = h.days.indexOf(Number(c.dataset.day)) >= 0);
+  $("#reminder").value = h.reminder;
+  document.querySelectorAll('input[name="type"]').forEach(r => r.disabled = true);   // the type cannot change
+  $("#habitTitle").textContent = "Edit habit";
+  $("#saveLabel").textContent = "Save changes";
+  show("newHabit");
 }
 
 // Save a new habit.
@@ -593,17 +654,24 @@ $("#saveHabit").addEventListener("click", () => {
   const f = readForm();
   if(!f.name){ formError("Please enter a habit name."); return; }
   if(!f.days.length){ formError("Please choose at least one day."); return; }
-  if(f.type === "gym" && !f.exercises.length){ formError("A gym habit needs at least one exercise."); return; }
-  data.habits.push({
-    id: makeId(),
-    name: f.name,
-    icon: f.icon,
-    type: f.type,
-    days: f.days,
-    reminder: f.reminder,
-    exercises: f.type === "gym" ? f.exercises : [],
-    createdAt: todayKey()
-  });
+  const editing = editingId ? data.habits.find(h => h.id === editingId) : null;
+  if(editing){
+    // Update in place: same id, same createdAt, log history untouched.
+    editing.name = f.name;
+    editing.icon = f.icon;
+    editing.days = f.days;
+    editing.reminder = f.reminder;   // the type never changes while editing
+  }else{
+    data.habits.push({
+      id: makeId(),
+      name: f.name,
+      icon: f.icon,
+      type: f.type,
+      days: f.days,
+      reminder: f.reminder,
+      createdAt: todayKey()
+    });
+  }
   saveData();
   resetForm();
   show("home");
@@ -619,7 +687,8 @@ const lib = {
   Core:["Plank","Crunches","Leg Raise","Russian Twist","Cable Crunch","Mountain Climbers"],
   Cardio:["Treadmill","Cycling","Rowing","Skipping Rope","Stair Climber","Elliptical"]
 };
-const picked = new Set();   // the names chosen for the new gym habit
+const picked = new Set();   // the names chosen for the day open in the picker
+let pickerTarget = null;    // which habit + day the picker writes to
 let group = "Chest";        // the muscle group that is open
 
 // The exercises of a group: the built in ones plus the custom ones that were saved.
@@ -644,8 +713,19 @@ function renderSlip(){
   const list = [...picked];
   $("#slip").innerHTML = list.map((n, i) =>
     `<div class="slip"><span>${pad(i + 1)}. ${esc(n.toUpperCase())}</span><i>LOGGED</i></div>`).join("");
-  $("#slipCount").textContent = $("#pickCount").textContent = list.length + " selected";
+  $("#slipCount").textContent = list.length + " selected";
   $("#tally").textContent = pad(list.length) + " ITEMS";
+}
+
+// Open the picker for one habit on one day, starting from that day's list.
+function openPicker(habitId, key){
+  pickerTarget = { habitId: habitId, key: key };
+  picked.clear();
+  dayExercises(key, habitId).forEach(n => picked.add(n));
+  group = "Chest";
+  $("#search").value = "";
+  renderGroups(); renderItems(); renderSlip();
+  show("picker");
 }
 $("#groups").addEventListener("click", e => {
   const b = e.target.closest("[data-g]"); if(!b) return;
@@ -675,6 +755,15 @@ function formatDay(key){
   return parseKey(key).toLocaleDateString("en-GB", {weekday:"long", day:"numeric", month:"long"});
 }
 
+// Copy the most recent earlier workout into a day, every exercise unticked.
+function repeatLastWorkout(habitId, key){
+  const names = lastWorkoutNames(habitId, key);
+  if(!names) return;
+  writeDayExercises(key, habitId, names, null);
+  saveData();
+  renderHome();
+}
+
 // The card of one habit.
 function habitCard(h, today){
   const done = isHabitDone(h, today);
@@ -682,18 +771,31 @@ function habitCard(h, today){
   const head = `<div class="hr">
     <div class="ic"><svg class="i"><use href="#${esc(h.icon)}"/></svg></div>
     <div class="tx"><div class="hn">${esc(h.name)}</div><div class="hs"><svg class="i" style="width:14px;height:14px"><use href="#flame"/></svg>${streak} day streak</div></div>
+    <button class="del" data-edit="${esc(h.id)}" aria-label="Edit ${esc(h.name)}"><svg class="i"><use href="#pencil"/></svg></button>
     <button class="del" data-id="${esc(h.id)}" aria-label="Delete ${esc(h.name)}"><svg class="i"><use href="#trash"/></svg></button>
     ${h.type === "gym" ? "" : `<input class="check" type="checkbox" data-h="${esc(h.id)}" aria-label="${esc(h.name)}"${done ? " checked" : ""}>`}
   </div>`;
   if(h.type !== "gym") return `<article class="card habit${done ? " ok" : ""}">${head}</article>`;
-  const entry = (data.log[today] || {})[h.id] || {};
-  const ticked = h.exercises.filter(ex => entry[ex] === true).length;
-  const rows = h.exercises.map(ex =>
+  const entry = dayEntry(today, h.id) || {};
+  const names = dayExercises(today, h.id);
+  // "Repeat last workout" is only offered when an earlier list exists.
+  const repeatBtn = lastWorkoutNames(h.id, today)
+    ? `<button class="btn sm" data-act="repeat" data-id="${esc(h.id)}">Repeat last workout</button>` : "";
+  const pickerBtn = label => `<button class="btn sm" data-act="choose" data-id="${esc(h.id)}">${label}</button>`;
+  if(!names.length){
+    // Nothing chosen for today yet: the picker replaces the checklist.
+    return `<article class="card habit${done ? " ok" : ""}">${head}
+      <div class="acts">${pickerBtn("Choose today’s exercises")}${repeatBtn}</div>
+    </article>`;
+  }
+  const ticked = names.filter(ex => entry[ex] === true).length;
+  const rows = names.map(ex =>
     `<label class="ex"><span class="nm">${esc(ex)}</span><input class="check" type="checkbox" data-h="${esc(h.id)}" data-ex="${esc(ex)}"${entry[ex] === true ? " checked" : ""}></label>`).join("");
   const routine = `<div class="routine">
-    <div class="rh up"><span>Routine checklist</span><span>${ticked}/${h.exercises.length} active</span></div>
+    <div class="rh up"><span>Routine checklist</span><span>${ticked}/${names.length} active</span></div>
     ${rows}
-  </div>`;
+  </div>
+  <div class="acts">${pickerBtn("Edit today’s exercises")}${repeatBtn}</div>`;
   return `<article class="card habit${done ? " ok" : ""}">${head}${routine}</article>`;
 }
 
@@ -771,7 +873,25 @@ $("#habitList").addEventListener("change", e => {
 // up here by delegation instead.
 $("#habitList").addEventListener("click", e => {
   const go = e.target.closest("[data-go]");
-  if(go){ show(go.dataset.go); return; }
+  if(go){
+    if(go.dataset.go === "newHabit") resetForm();   // the empty-state button too
+    show(go.dataset.go);
+    return;
+  }
+  // Edit a habit: reuse the New Habit form, pre-filled.
+  const editBtn = e.target.closest("[data-edit]");
+  if(editBtn){
+    const h = data.habits.find(x => x.id === editBtn.dataset.edit);
+    if(h) openEdit(h);
+    return;
+  }
+  // Gym card actions: open the picker for today, or copy the last workout.
+  const act = e.target.closest("[data-act]");
+  if(act){
+    if(act.dataset.act === "choose") openPicker(act.dataset.id, todayKey());
+    else if(act.dataset.act === "repeat") repeatLastWorkout(act.dataset.id, todayKey());
+    return;
+  }
   // Delete a habit. Old log entries are left alone, they are harmless.
   const btn = e.target.closest(".del");
   if(!btn) return;
@@ -802,8 +922,8 @@ function buildReceipt(){
     const hs = computeHabitStreak(h, today);
     items += `<div class="ri"><span>${esc(h.name.toUpperCase())}</span><span>${pad(hs)}${dayWord(hs)}</span></div>`;
     if(h.type === "gym"){
-      const entry = (data.log[today] || {})[h.id] || {};
-      h.exercises.forEach(ex => {
+      const entry = dayEntry(today, h.id) || {};
+      dayExercises(today, h.id).forEach(ex => {
         items += `<div class="ri sub"><span>&gt; ${esc(ex.toUpperCase())}</span><span>${entry[ex] === true ? "DONE" : "PENDING"}</span></div>`;
       });
     }else{

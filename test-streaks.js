@@ -35,7 +35,8 @@ function loadApp(store, date){
 
   const build = new Function("document", "localStorage", "location", "window",
     script + "\nreturn {data, computeHabitStreak, computeStreak, computeBestStreak," +
-    " restDaysUsed, countCompleteDays, isDayKept, isHabitDone, dayWord};");
+    " restDaysUsed, countCompleteDays, isDayKept, isHabitDone, dayWord, dayExercises," +
+    " writeDayExercises, lastWorkoutNames, repeatLastWorkout};");
   return build(fakeDocument, fakeStorage, fakeLocation, fakeWindow);
 }
 
@@ -43,7 +44,7 @@ function loadApp(store, date){
 const day = n => `2026-11-${String(n).padStart(2, "0")}`;   // 9 = Monday ... 15 = Sunday
 const habit = o => Object.assign({
   id: "h1", name: "Test", icon: "drop", type: "normal",
-  days: [0,1,2,3,4,5,6], reminder: "07:15", exercises: [], createdAt: day(9)
+  days: [0,1,2,3,4,5,6], reminder: "07:15", createdAt: day(9)
 }, o);
 
 let pass = 0, fail = 0;
@@ -56,7 +57,7 @@ function check(name, actual, expected){
 // =================================================================
 console.log("\nBug 1 - computeHabitStreak walks forwards from createdAt");
 // The examples are for a GYM habit: all days scheduled, one exercise to tick.
-const gym = () => habit({ id:"g", name:"Gym", type:"gym", exercises:["Bench"] });
+const gym = () => habit({ id:"g", name:"Gym", type:"gym" });
 const done = () => ({ g: { Bench: true } });           // a completed gym day in the log
 
 {
@@ -103,7 +104,7 @@ console.log("\nBug 6 - the day streak keeps going when a gym habit rests twice")
   const store = {
     habits: [
       habit({ id:"w", name:"Water" }),
-      habit({ id:"g", name:"Gym", type:"gym", days:[0,1,2], exercises:["Bench"] })   // Monday, Tuesday, Wednesday
+      habit({ id:"g", name:"Gym", type:"gym", days:[0,1,2] })   // Monday, Tuesday, Wednesday
     ],
     log: {
       [day(9)]:  { w:true },        // Monday: Water done, Gym missed (rest day 1)
@@ -167,15 +168,60 @@ console.log("\nRegression - the rules from Step 2 still hold");
   const app = loadApp(store, day(15));
   check("only Mon/Wed/Fri scheduled, all done -> 3", app.computeHabitStreak(app.data.habits[0], day(15)), 3);
 }
+console.log("\nNew rule - a gym day is done only from that day's own exercise list");
 {
-  // A gym habit is only done when every exercise is ticked.
-  const store = { habits: [habit({ type:"gym", exercises:["Bench","Squat"] })],
-    log: { [day(9)]: { h1: { Bench:true } } } };
+  // (a) nothing chosen for the day yet -> pending, not done
+  const store = { habits: [habit({ id:"g", type:"gym" })], log: {} };
   const app = loadApp(store, day(9));
-  check("one exercise out of two is not done", app.isHabitDone(app.data.habits[0], day(9)), false);
-  store.log[day(9)].h1.Squat = true;
+  check("gym not done before exercises are chosen", app.isHabitDone(app.data.habits[0], day(9)), false);
+}
+{
+  // (b) one ticked, one unticked -> not done; all ticked -> done
+  const store = { habits: [habit({ id:"g", type:"gym" })],
+    log: { [day(9)]: { g: { "Bench Press": true, "Squat": false } } } };
+  const app = loadApp(store, day(9));
+  check("not done while one exercise is unticked", app.isHabitDone(app.data.habits[0], day(9)), false);
+  store.log[day(9)].g.Squat = true;
   const app2 = loadApp(store, day(9));
-  check("both exercises ticked is done", app2.isHabitDone(app2.data.habits[0], day(9)), true);
+  check("done after ticking all", app2.isHabitDone(app2.data.habits[0], day(9)), true);
+}
+{
+  // (c) OLD data: habit still carries an exercises field, log entry has only ticked keys
+  const store = { habits: [habit({ id:"g", type:"gym", exercises:["Bench"] })],
+    log: { [day(9)]: { g: { Bench: true } } } };
+  const app = loadApp(store, day(9));
+  check("old log entry still counts", app.isHabitDone(app.data.habits[0], day(9)), true);
+  check("old habit.exercises field is ignored", app.data.habits[0].exercises, undefined);
+}
+{
+  // (d) writeDayExercises: keeps ticks for names that stay, drops the rest, new ones unticked
+  const store = { habits: [habit({ id:"g", type:"gym" })],
+    log: { [day(9)]: { g: { "Bench Press": true, "Squat": false } } } };
+  const app = loadApp(store, day(9));
+  const prev = { "Bench Press": true, "Squat": false };
+  app.writeDayExercises(day(9), "g", ["Bench Press", "Deadlift"], prev);
+  check("staying tick kept, dropped name gone, new name unticked",
+    app.data.log[day(9)].g, { "Bench Press": true, "Deadlift": false });
+  app.writeDayExercises(day(9), "g", [], null);
+  check("an empty selection removes the day's list", app.dayExercises(day(9), "g"), []);
+}
+
+// =================================================================
+console.log("\nRepeat last workout - copies the most recent earlier list, all unticked");
+{
+  const store = { habits: [habit({ id:"g", type:"gym" })], log: {
+    [day(9)]:  { g: { "Bench Press": true } },
+    [day(10)]: { g: { "Squat": true, "Lunges": false } },
+    [day(11)]: {}
+  }};
+  const app = loadApp(store, day(11));
+  check("most recent earlier day with a list wins",
+    app.lastWorkoutNames("g", day(11)), ["Squat", "Lunges"]);
+  check("no earlier list -> hidden", app.lastWorkoutNames("none", day(11)), null);
+  app.repeatLastWorkout("g", day(11));
+  check("repeat writes today's list all unticked",
+    app.data.log[day(11)].g, { "Squat": false, "Lunges": false });
+  check("so the day is not done yet", app.isHabitDone(app.data.habits[0], day(11)), false);
 }
 {
   // Fully completed days are what the order number counts.
