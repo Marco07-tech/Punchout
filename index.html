@@ -133,7 +133,8 @@ button{background:none;border:0;cursor:pointer}
 /* Settings panel overlay */
 .settings-panel{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:24px 16px}
 .settings-panel[hidden]{display:none!important}
-.settings-card{max-width:330px;width:100%}
+.settings-backdrop{position:absolute;inset:0;background:var(--ink);opacity:.92;z-index:1}
+.settings-card{position:relative;z-index:2;max-width:330px;width:100%}
 </style>
 </head>
 <body>
@@ -225,6 +226,8 @@ button{background:none;border:0;cursor:pointer}
   <div class="note" id="formError" hidden><svg class="i"><use href="#info"/></svg><span id="formErrorText"></span></div>
 
   <button class="btn" id="saveHabit" style="margin-top:28px;font-size:22px"><span id="saveLabel">Save habit</span> <svg class="i"><use href="#receipt"/></svg></button>
+  <button class="btn" id="addReminder" style="margin-top:12px;font-size:16px" hidden>Add reminder to calendar</button>
+  <p class="foot up" id="reminderNote" hidden style="margin-top:6px">Reminders come from your calendar app. If you change the time or days, add the reminder again. Deleting a habit does not remove its calendar event.</p>
   <p class="foot up">&#9632; Printed &amp; sealed in store &#9632;</p>
 </main>
 
@@ -279,17 +282,19 @@ button{background:none;border:0;cursor:pointer}
 
 <!-- ================= SETTINGS PANEL ================= -->
 <div class="settings-panel" id="settingsPanel" hidden role="dialog" aria-modal="true" aria-label="Settings">
+  <div class="settings-backdrop" id="settingsBackdrop"></div>
   <div class="card settings-card">
     <div class="top">
       <button class="sq" id="settingsClose" aria-label="Close"><svg class="i"><use href="#back"/></svg></button>
       <div class="t"><b>Settings</b></div>
-      <div class="sq"></div>
     </div>
     <div class="lab up"><label for="settingSound">Sound</label></div>
-    <label class="chip"><input type="checkbox" id="settingSound" checked>On</label>
+    <label class="chip"><input type="checkbox" id="settingSound" checked><span id="settingSoundText">ON</span></label>
     <div class="lab up"><label for="settingVibration">Vibration</label></div>
-    <label class="chip"><input type="checkbox" id="settingVibration" checked>On</label>
-    <button class="btn" id="settingsDone" style="margin-top:28px">Close <svg class="i"><use href="#back" style="transform:scaleX(-1);transform-origin:center"/></svg></button>
+    <label class="chip"><input type="checkbox" id="settingVibration" checked><span id="settingVibrationText">ON</span></label>
+    <button class="btn" id="addAllReminders" style="margin-top:18px">Add all reminders to calendar</button>
+    <p class="foot up" id="reminderNoteAll" style="margin-top:6px">Reminders come from your calendar app. If you change the time or days, add the reminder again. Deleting a habit does not remove its calendar event.</p>
+    <button class="btn" id="settingsDone" style="margin-top:14px">Close <svg class="i"><use href="#back" style="transform:scaleX(-1);transform-origin:center"/></svg></button>
   </div>
 </div>
 
@@ -655,6 +660,8 @@ function resetForm(){
   $("#habitTitle").textContent = "New habit";
   $("#saveLabel").textContent = "Save habit";
   formError("");
+  $("#addReminder").hidden = true;
+  $("#reminderNote").hidden = true;
   renderGroups(); renderItems(); renderSlip();
 }
 
@@ -670,6 +677,8 @@ function openEdit(h){
   document.querySelectorAll('input[name="type"]').forEach(r => r.disabled = true);   // the type cannot change
   $("#habitTitle").textContent = "Edit habit";
   $("#saveLabel").textContent = "Save changes";
+  $("#addReminder").hidden = false;
+  $("#reminderNote").hidden = false;
   show("newHabit");
 }
 
@@ -1171,26 +1180,147 @@ function openSettings(){
   loadSettings();
   $("#settingSound").checked = settings.sound;
   $("#settingVibration").checked = settings.vibration;
+  updateSettingsLabels();
   $("#settingsPanel").hidden = false;
   $("#settingsClose").focus({preventScroll:true});
 }
 function closeSettings(){
   $("#settingsPanel").hidden = true;
 }
+function updateSettingsLabels(){
+  $("#settingSoundText").textContent = settings.sound ? "ON" : "OFF";
+  $("#settingVibrationText").textContent = settings.vibration ? "ON" : "OFF";
+}
+function settingsLabels(){
+  return { sound: $("#settingSoundText").textContent, vibration: $("#settingVibrationText").textContent };
+}
 $("#settingSound").addEventListener("change", () => {
   settings.sound = $("#settingSound").checked;
   saveSettings();
+  updateSettingsLabels();
   playClick();
 });
 $("#settingVibration").addEventListener("change", () => {
   settings.vibration = $("#settingVibration").checked;
   saveSettings();
+  updateSettingsLabels();
   playClick();
 });
 $("#settingsClose").addEventListener("click", closeSettings);
 $("#settingsDone").addEventListener("click", closeSettings);
 
-/* ---------- 10. START ---------- */
+/* ---------- 10. CALENDAR REMINDERS (.ics) ---------- */
+
+// Escape text for iCalendar: backslash, semicolon, comma, newline, CR.
+function escIcs(t){
+  return String(t)
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\r");
+}
+
+// Fold a content line at 75 octets (RFC 5545).
+function foldLine(text){
+  const enc = new TextEncoder();
+  const bytes = enc.encode(text);
+  if(bytes.length <= 75) return text;
+  let out = "";
+  let i = 0;
+  while(i < bytes.length){
+    out += new TextDecoder().decode(bytes.subarray(i, i + 75));
+    i += 75;
+    if(i < bytes.length) out += "\r\n ";
+  }
+  return out;
+}
+
+// A URL-friendly slug for the downloaded file name.
+function slugify(name){
+  return String(name).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "habit";
+}
+
+// The first date on or after `fromKey` on which the habit is scheduled.
+function firstScheduledDay(h, fromKey){
+  let d = parseKey(fromKey);
+  const limit = addDays(d, 60);
+  while(d.getTime() <= limit.getTime()){
+    if(h.days.indexOf(weekdayOf(keyOf(d))) >= 0) return keyOf(d);
+    d = addDays(d, 1);
+  }
+  return fromKey;
+}
+
+// Build a valid iCalendar 2.0 string (CRLF line endings, 75-octet folding)
+// with one VEVENT per habit plus a PT0M DISPLAY alarm on each.
+function buildIcs(habits){
+  const lines = [];
+  lines.push("BEGIN:VCALENDAR");
+  lines.push("VERSION:2.0");
+  lines.push("PRODID:-//Punchout//EN");
+  lines.push("CALSCALE:GREGORIAN");
+  const calUrl = (location.origin || "") + (location.pathname || "");
+  habits.forEach(h => {
+    lines.push("BEGIN:VEVENT");
+    lines.push("UID:" + escIcs(h.id) + "@punchout");
+    lines.push("SUMMARY:" + escIcs("Punchout: " + h.name));
+    lines.push("DESCRIPTION:" + escIcs("Open Punchout and tick off " + h.name + "."));
+    lines.push("URL:" + escIcs(calUrl));
+    const startKey = firstScheduledDay(h, todayKey());
+    const parts = (h.reminder || "07:15").split(":").map(Number);
+    const hh = parts[0] || 0;
+    const mm = parts[1] || 0;
+    lines.push("DTSTART:" + startKey.replace(/-/g, "") + "T" + pad(hh) + pad(mm) + "00");
+    lines.push("DURATION:PT5M");
+    const dayNames = ["MO","TU","WE","TH","FR","SA","SU"];
+    lines.push("RRULE:FREQ=WEEKLY;BYDAY=" + h.days.map(d => dayNames[d]).join(","));
+    lines.push("BEGIN:VALARM");
+    lines.push("ACTION:DISPLAY");
+    lines.push("TRIGGER:PT0M");
+    lines.push("END:VALARM");
+    lines.push("END:VEVENT");
+  });
+  lines.push("END:VCALENDAR");
+  return lines.map(foldLine).join("\r\n") + "\r\n";
+}
+
+// Download an .ics file from a string.
+function downloadIcs(filename, content){
+  try{
+    const blob = new Blob([content], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }catch(e){
+    // download not supported: nothing to do
+  }
+}
+
+// One habit: open the Edit form reminder download.
+function downloadReminder(habitId){
+  const h = data.habits.find(x => x.id === habitId);
+  if(!h) return;
+  downloadIcs("punchout-" + slugify(h.name) + ".ics", buildIcs([h]));
+}
+
+// All habits: download a combined .ics from the Settings panel.
+function downloadAllReminders(){
+  downloadIcs("punchout-reminders.ics", buildIcs(data.habits));
+}
+
+$("#addReminder").addEventListener("click", () => {
+  if(!editingId) return;
+  downloadReminder(editingId);
+});
+$("#addAllReminders").addEventListener("click", downloadAllReminders);
+
+/* ---------- 11. START ---------- */
 // If the app is left open overnight, "today" changes - redraw when we come back.
 function checkNewDay(){
   const now = todayKey();

@@ -37,7 +37,7 @@ function loadApp(store, date){
     setItem: (k, v) => { sharedStorage[k] = v; },
     removeItem: k => { delete sharedStorage[k]; }
   };
-  const fakeLocation = { search: date ? "?date=" + date : "" };
+  const fakeLocation = { search: date ? "?date=" + date : "", origin: "https://punchout.example.com", pathname: "/" };
   const fakeWindow = { addEventListener(){} };
 
   const build = new Function("document", "localStorage", "location", "window",
@@ -46,7 +46,7 @@ function loadApp(store, date){
     " writeDayExercises, lastWorkoutNames, repeatLastWorkout," +
     " playClick, playTick, playConfirm, playDelete, playError, playBillStep," +
     " playBillDing, playBillTear, audioReady, loadSettings, saveSettings, settings," +
-    " vibrate};");
+    " vibrate, updateSettingsLabels, settingsLabels, buildIcs};");
   return build(fakeDocument, fakeStorage, fakeLocation, fakeWindow);
 }
 
@@ -300,6 +300,65 @@ console.log("\nSound & vibration");
   app.playClick();
   app.playConfirm();
   check("audio context not created while sound off", app.audioReady(), false);
+}
+{
+  // settings labels follow state immediately on toggle and on open
+  const app = loadApp({ habits: [], log: {} });
+  app.updateSettingsLabels(); // simulate panel open (openSettings calls this)
+  check("default labels ON/ON", JSON.stringify(app.settingsLabels()), JSON.stringify({ sound:"ON", vibration:"ON" }));
+  app.settings.sound = false;
+  app.settings.vibration = true;
+  app.updateSettingsLabels();
+  check("toggled labels OFF/ON", JSON.stringify(app.settingsLabels()), JSON.stringify({ sound:"OFF", vibration:"ON" }));
+  app.settings.sound = true;
+  app.settings.vibration = false;
+  app.updateSettingsLabels();
+  check("toggled labels ON/OFF", JSON.stringify(app.settingsLabels()), JSON.stringify({ sound:"ON", vibration:"OFF" }));
+}
+
+// =================================================================
+console.log("\nCalendar reminders (buildIcs)");
+{
+  const mwf = habit({ id: "h-mwf", name: "Gym", days: [0, 2, 4], reminder: "07:15", createdAt: day(9) });
+  const app = loadApp({ habits: [mwf], log: {} }, day(9));
+  const ics = app.buildIcs([mwf]);
+  check("VERSION/PRODID/CALSCALE present", ics.includes("VERSION:2.0") && ics.includes("PRODID:-//Punchout//EN") && ics.includes("CALSCALE:GREGORIAN"), true);
+  check("lines use CRLF endings", ics.split("\n").filter(l => l !== "").every(l => l.endsWith("\r")), true);
+  check("BEGIN:VEVENT present", ics.includes("BEGIN:VEVENT"), true);
+  check("UID stable (habitId@punchout)", ics.includes("UID:h-mwf@punchout"), true);
+  check("SUMMARY present", ics.includes("SUMMARY:Punchout: Gym"), true);
+  check("DESCRIPTION present", ics.includes("DESCRIPTION:Open Punchout and tick off Gym."), true);
+  check("DTSTART on scheduled day (Monday Nov 9)", ics.includes("DTSTART:20261109T071500"), true);
+  check("DURATION 5 minutes", ics.includes("DURATION:PT5M"), true);
+  check("RRULE BYDAY=MO,WE,FR", ics.includes("RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR"), true);
+  check("VALARM with ACTION:DISPLAY and TRIGGER:PT0M", ics.includes("BEGIN:VALARM") && ics.includes("ACTION:DISPLAY") && ics.includes("TRIGGER:PT0M"), true);
+  check("END blocks present", ics.includes("END:VALARM") && ics.includes("END:VEVENT") && ics.includes("END:VCALENDAR"), true);
+}
+{
+  // folding: no folded line exceeds 75 chars and a fold occurs for long lines
+  const longName = habit({ id: "h1", name: "A very long habit name that exceeds seventy five octets when combined with the Punchout prefix", days: [0], reminder: "08:00", createdAt: day(9) });
+  const app = loadApp({ habits: [longName], log: {} }, day(9));
+  const ics = app.buildIcs([longName]);
+  check("no folded line exceeds 75 chars", ics.split("\r\n").every(l => l.length <= 75), true);
+  check("a fold occurred (continuation starts with space)", ics.includes("\r\n "), true);
+}
+{
+  // escaping: comma, semicolon, backslash, newline in habit name
+  const weird = habit({ id: "h2", name: "A,B;C\\D\nE", days: [0], reminder: "09:00", createdAt: day(9) });
+  const app = loadApp({ habits: [weird], log: {} }, day(9));
+  const ics = app.buildIcs([weird]);
+  check("comma escaped", ics.includes("SUMMARY:Punchout: A\\,B"), true);
+  check("semicolon escaped", ics.includes("B\\;C"), true);
+  check("backslash escaped", ics.includes("C\\\\D"), true);
+  check("newline escaped", ics.includes("\\nE"), true);
+}
+{
+  // first DTSTART falls on a scheduled day: Sunday-only habit, today is Monday
+  const sunday = habit({ id: "h3", name: "SunHabit", days: [6], reminder: "18:30", createdAt: day(9) });
+  const app = loadApp({ habits: [sunday], log: {} }, day(9));
+  const ics = app.buildIcs([sunday]);
+  check("DTSTART is next Sunday (Nov 15)", ics.includes("DTSTART:20261115T183000"), true);
+  check("BYDAY=SU", ics.includes("RRULE:FREQ=WEEKLY;BYDAY=SU"), true);
 }
 
 console.log("\n" + pass + " passed, " + fail + " failed");
