@@ -293,6 +293,7 @@ button{background:none;border:0;cursor:pointer}
     <div class="lab up"><label for="settingVibration">Vibration</label></div>
     <label class="chip"><input type="checkbox" id="settingVibration" checked><span id="settingVibrationText">ON</span></label>
     <button class="btn" id="addAllReminders" style="margin-top:18px">Add all reminders to calendar</button>
+    <p class="foot up" id="noHabitsMsg" hidden style="margin-top:6px">No habits yet. Add a habit first.</p>
     <p class="foot up" id="reminderNoteAll" style="margin-top:6px">Reminders come from your calendar app. If you change the time or days, add the reminder again. Deleting a habit does not remove its calendar event.</p>
     <button class="btn" id="settingsDone" style="margin-top:14px">Close <svg class="i"><use href="#back" style="transform:scaleX(-1);transform-origin:center"/></svg></button>
   </div>
@@ -1221,19 +1222,45 @@ function escIcs(t){
     .replace(/\r/g, "\\r");
 }
 
-// Fold a content line at 75 octets (RFC 5545).
+// Fold a content line at 75 octets (RFC 5545). Splits only on character
+// boundaries so multi-byte UTF-8 characters (Hindi, emoji) are never cut
+// in half. Every physical line, including the leading space on a
+// continuation line, is at most 75 octets.
 function foldLine(text){
   const enc = new TextEncoder();
-  const bytes = enc.encode(text);
-  if(bytes.length <= 75) return text;
-  let out = "";
-  let i = 0;
-  while(i < bytes.length){
-    out += new TextDecoder().decode(bytes.subarray(i, i + 75));
-    i += 75;
-    if(i < bytes.length) out += "\r\n ";
+  const lines = [];
+  let buf = "";
+  let bufBytes = 0;
+  let isFirstLine = true;
+  for(const ch of [...text]){
+    const chBytes = enc.encode(ch).length;
+    if(isFirstLine){
+      if(bufBytes + chBytes > 75){
+        lines.push(buf);
+        buf = ch;
+        bufBytes = chBytes;
+        isFirstLine = false;
+      }else{
+        buf += ch;
+        bufBytes += chBytes;
+      }
+    }else{
+      if(1 + bufBytes + chBytes > 75){
+        lines.push(" " + buf);
+        buf = ch;
+        bufBytes = chBytes;
+      }else{
+        buf += ch;
+        bufBytes += chBytes;
+      }
+    }
   }
-  return out;
+  if(isFirstLine){
+    if(buf) lines.push(buf);
+  }else{
+    if(buf) lines.push(" " + buf);
+  }
+  return lines.join("\r\n");
 }
 
 // A URL-friendly slug for the downloaded file name.
@@ -1252,6 +1279,13 @@ function firstScheduledDay(h, fromKey){
   return fromKey;
 }
 
+// Current time in UTC as YYYYMMDDTHHMMSSZ (for DTSTAMP).
+function nowUtcStamp(){
+  const d = new Date();
+  return pad(d.getUTCFullYear()) + pad(d.getUTCMonth()+1) + pad(d.getUTCDate()) + "T" +
+         pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + pad(d.getUTCSeconds()) + "Z";
+}
+
 // Build a valid iCalendar 2.0 string (CRLF line endings, 75-octet folding)
 // with one VEVENT per habit plus a PT0M DISPLAY alarm on each.
 function buildIcs(habits){
@@ -1262,8 +1296,12 @@ function buildIcs(habits){
   lines.push("CALSCALE:GREGORIAN");
   const calUrl = (location.origin || "") + (location.pathname || "");
   habits.forEach(h => {
+    const stamp = nowUtcStamp();
+    const sequence = Math.floor(Date.now()/60000);
     lines.push("BEGIN:VEVENT");
     lines.push("UID:" + escIcs(h.id) + "@punchout");
+    lines.push("DTSTAMP:" + stamp);
+    lines.push("SEQUENCE:" + sequence);
     lines.push("SUMMARY:" + escIcs("Punchout: " + h.name));
     lines.push("DESCRIPTION:" + escIcs("Open Punchout and tick off " + h.name + "."));
     lines.push("URL:" + escIcs(calUrl));
@@ -1311,6 +1349,13 @@ function downloadReminder(habitId){
 
 // All habits: download a combined .ics from the Settings panel.
 function downloadAllReminders(){
+  if(!data.habits.length){
+    $("#noHabitsMsg").hidden = false;
+    $("#reminderNoteAll").hidden = true;
+    return;
+  }
+  $("#noHabitsMsg").hidden = true;
+  $("#reminderNoteAll").hidden = false;
   downloadIcs("punchout-reminders.ics", buildIcs(data.habits));
 }
 

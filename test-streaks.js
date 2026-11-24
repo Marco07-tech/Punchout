@@ -46,7 +46,7 @@ function loadApp(store, date){
     " writeDayExercises, lastWorkoutNames, repeatLastWorkout," +
     " playClick, playTick, playConfirm, playDelete, playError, playBillStep," +
     " playBillDing, playBillTear, audioReady, loadSettings, saveSettings, settings," +
-    " vibrate, updateSettingsLabels, settingsLabels, buildIcs};");
+    " vibrate, updateSettingsLabels, settingsLabels, buildIcs, downloadIcs, downloadAllReminders};");
   return build(fakeDocument, fakeStorage, fakeLocation, fakeWindow);
 }
 
@@ -359,6 +359,38 @@ console.log("\nCalendar reminders (buildIcs)");
   const ics = app.buildIcs([sunday]);
   check("DTSTART is next Sunday (Nov 15)", ics.includes("DTSTART:20261115T183000"), true);
   check("BYDAY=SU", ics.includes("RRULE:FREQ=WEEKLY;BYDAY=SU"), true);
+}
+
+// Bug 1: fold only on character boundaries; Hindi and emoji names round-trip intact
+{
+  const hindi = habit({ id: "h4", name: "नमस्ते योग", days: [0], reminder: "08:00", createdAt: day(9) });
+  const emoji = habit({ id: "h5", name: "Gym 🏋️‍♂️", days: [0], reminder: "08:00", createdAt: day(9) });
+  const app = loadApp({ habits: [hindi, emoji], log: {} }, day(9));
+  const ics = app.buildIcs([hindi, emoji]);
+  check("no replacement characters in Hindi name", !ics.includes("\uFFFD"), true);
+  check("no replacement characters in emoji name", !ics.includes("\uFFFD"), true);
+  check("every line at most 75 octets", ics.split("\r\n").every(l => new TextEncoder().encode(l).length <= 75), true);
+}
+
+// Bug 2: DTSTAMP and SEQUENCE present on every VEVENT
+{
+  const mwf = habit({ id: "h6", name: "Gym", days: [0, 2, 4], reminder: "07:15", createdAt: day(9) });
+  const app = loadApp({ habits: [mwf], log: {} }, day(9));
+  const ics = app.buildIcs([mwf]);
+  check("DTSTAMP present", /DTSTAMP:\d{8}T\d{6}Z/.test(ics), true);
+  check("SEQUENCE present", /SEQUENCE:\d+/.test(ics), true);
+}
+
+// Bug 3: no download when there are no habits (early return before downloadIcs)
+{
+  const app = loadApp({ habits: [], log: {} }, day(9));
+  const emptyIcs = app.buildIcs([]);
+  check("no VEVENT when no habits", !emptyIcs.includes("BEGIN:VEVENT"), true);
+  let threw = false;
+  try{
+    app.downloadAllReminders();
+  }catch(e){ threw = true; }
+  check("downloadAllReminders returns without throwing", threw, false);
 }
 
 console.log("\n" + pass + " passed, " + fail + " failed");
