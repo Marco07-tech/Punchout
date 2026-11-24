@@ -295,6 +295,20 @@ button{background:none;border:0;cursor:pointer}
     <button class="btn" id="addAllReminders" style="margin-top:18px">Add all reminders to calendar</button>
     <p class="foot up" id="noHabitsMsg" hidden style="margin-top:6px">No habits yet. Add a habit first.</p>
     <p class="foot up" id="reminderNoteAll" style="margin-top:6px">Reminders come from your calendar app. If you change the time or days, add the reminder again. Deleting a habit does not remove its calendar event.</p>
+
+    <!-- Backup section -->
+    <div class="up" style="margin-top:20px;padding-top:10px;border-top:3px solid #D8C9B2">
+      <b>Backup</b>
+    </div>
+    <button class="btn" id="exportBackup" style="margin-top:10px">Export my data</button>
+    <div id="exportNote" class="foot up" style="margin-top:6px;min-height:14px"></div>
+    <div class="lab up" style="margin-top:16px"><label for="importText">Import from file</label></div>
+    <input type="file" id="importFile" accept=".json" style="width:100%;margin-top:4px;margin-bottom:8px">
+    <div class="lab up"><label for="importText">Import from text</label></div>
+    <textarea id="importText" rows="3" style="width:100%;font-family:var(--mono);font-size:11px"></textarea>
+    <button class="btn" id="importBackup" style="margin-top:8px">Restore</button>
+    <div id="importNote" class="foot up" style="margin-top:6px;min-height:14px"></div>
+    <button class="btn" id="undoRestore" style="margin-top:10px" hidden>Undo last restore</button>
     <button class="btn" id="settingsDone" style="margin-top:14px">Close <svg class="i"><use href="#back" style="transform:scaleX(-1);transform-origin:center"/></svg></button>
   </div>
 </div>
@@ -1364,6 +1378,156 @@ $("#addReminder").addEventListener("click", () => {
   downloadReminder(editingId);
 });
 $("#addAllReminders").addEventListener("click", downloadAllReminders);
+
+/* ---------- 10b. BACKUP & RESTORE ---------- */
+
+// Build the export JSON object.
+function buildExportJSON(){
+  return {
+    app: "punchout",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    data: {
+      habits: data.habits,
+      log: data.log,
+      customExercises: data.customExercises
+    },
+    settings: {
+      sound: settings.sound,
+      vibration: settings.vibration
+    }
+  };
+}
+
+// Download a file from text content.
+function downloadText(filename, text, mimeType){
+  try{
+    const blob = new Blob([text], { type: mimeType + ";charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }catch(e){}
+}
+
+// Export my data: download + copy to clipboard, then show confirmation.
+function exportBackup(){
+  const json = buildExportJSON();
+  const text = JSON.stringify(json, null, 2);
+  const filename = "punchout-backup-" + todayKey() + ".json";
+
+  downloadText(filename, text, "application/json");
+
+  try{
+    const nav = window && window.navigator;
+    if(nav && nav.clipboard && nav.clipboard.writeText){
+      nav.clipboard.writeText(text);
+    }
+  }catch(e){}
+
+  $("#exportNote").textContent = "Exported " + filename + " and copied to clipboard.";
+}
+
+// Strictly validate an imported backup object before anything is changed.
+function validateImport(parsed){
+  if(!parsed || typeof parsed !== "object") return { ok: false, msg: "Backup file is not a JSON object." };
+  if(parsed.app !== "punchout") return { ok: false, msg: "Not a Punchout backup file." };
+  if(parsed.version !== 1) return { ok: false, msg: "Unsupported backup version." };
+  if(!parsed.data || typeof parsed.data !== "object") return { ok: false, msg: "Backup is missing the data section." };
+  if(!Array.isArray(parsed.data.habits)) return { ok: false, msg: "Backup is missing the habits list." };
+  if(!parsed.data.log || typeof parsed.data.log !== "object" || Array.isArray(parsed.data.log)) return { ok: false, msg: "Backup is missing the log." };
+  return { ok: true };
+}
+
+// Replace app data with repaired import data, then redraw Home.
+function applyImport(parsed){
+  const d = parsed.data;
+  const habits = Array.isArray(d.habits)
+    ? d.habits.filter(h => h && typeof h === "object").map(fixHabit).filter(h => h)
+    : [];
+  const log = (d.log && typeof d.log === "object" && !Array.isArray(d.log)) ? d.log : {};
+  const customExercises = (d.customExercises && typeof d.customExercises === "object" && !Array.isArray(d.customExercises)) ? d.customExercises : {};
+
+  data.habits = habits;
+  data.log = log;
+  data.customExercises = customExercises;
+
+  saveData();
+  renderHome();
+}
+
+// Import from pasted text or a chosen file.
+function handleImportText(text){
+  $("#importNote").textContent = "";
+  let parsed;
+  try{
+    parsed = JSON.parse(text);
+  }catch(e){
+    $("#importNote").textContent = "Invalid JSON: " + esc(e.message);
+    return;
+  }
+  const check = validateImport(parsed);
+  if(!check.ok){
+    $("#importNote").textContent = esc(check.msg);
+    return;
+  }
+  if(!confirm("This replaces all data on this device. Continue?")) return;
+
+  // Save current data as an undo copy before replacing.
+  try{
+    const prevCopy = {
+      app: "punchout",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      data: {
+        habits: data.habits,
+        log: data.log,
+        customExercises: data.customExercises
+      },
+      settings: {
+        sound: settings.sound,
+        vibration: settings.vibration
+      }
+    };
+    localStorage.setItem("habitStore.v1.prev", JSON.stringify(prevCopy));
+    $("#undoRestore").hidden = false;
+  }catch(e){}
+
+  applyImport(parsed);
+  $("#importNote").textContent = "Restore complete. Home redrawn.";
+}
+
+$("#exportBackup").addEventListener("click", exportBackup);
+$("#importFile").addEventListener("change", (e) => {
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => handleImportText(reader.result);
+  reader.readAsText(file);
+});
+$("#importBackup").addEventListener("click", () => {
+  handleImportText($("#importText").value);
+});
+
+// Undo the last restore by restoring the saved previous copy.
+function undoRestore(){
+  const prev = localStorage.getItem("habitStore.v1.prev");
+  if(!prev) return;
+  try{
+    const parsed = JSON.parse(prev);
+    applyImport(parsed);
+    localStorage.removeItem("habitStore.v1.prev");
+    $("#undoRestore").hidden = true;
+    $("#importNote").textContent = "Undone last restore.";
+  }catch(e){
+    $("#importNote").textContent = "Could not undo last restore.";
+  }
+}
+$("#undoRestore").addEventListener("click", undoRestore);
 
 /* ---------- 11. START ---------- */
 // If the app is left open overnight, "today" changes - redraw when we come back.

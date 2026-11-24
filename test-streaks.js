@@ -46,7 +46,8 @@ function loadApp(store, date){
     " writeDayExercises, lastWorkoutNames, repeatLastWorkout," +
     " playClick, playTick, playConfirm, playDelete, playError, playBillStep," +
     " playBillDing, playBillTear, audioReady, loadSettings, saveSettings, settings," +
-    " vibrate, updateSettingsLabels, settingsLabels, buildIcs, downloadIcs, downloadAllReminders};");
+    " vibrate, updateSettingsLabels, settingsLabels, buildIcs, downloadIcs, downloadAllReminders," +
+    " buildExportJSON, handleImportText, undoRestore};");
   return build(fakeDocument, fakeStorage, fakeLocation, fakeWindow);
 }
 
@@ -391,6 +392,113 @@ console.log("\nCalendar reminders (buildIcs)");
     app.downloadAllReminders();
   }catch(e){ threw = true; }
   check("downloadAllReminders returns without throwing", threw, false);
+}
+
+// =================================================================
+console.log("\nBackup & restore");
+// confirm() is a browser API; mock it for these tests.
+global.confirm = () => true;
+{
+  // Export then import gives identical data
+  const app = loadApp({
+    habits: [habit({ name: "Gym", type: "gym", days: [0, 2, 4], reminder: "07:15" })],
+    log: {},
+    customExercises: { Chest: ["Bench Press"] }
+  }, day(9));
+  app.settings.sound = true;
+  app.settings.vibration = false;
+  app.saveSettings();
+
+  const json = app.buildExportJSON();
+  check("export has app/version/exportedAt/data/settings",
+    !!(json.app === "punchout" && json.version === 1 && typeof json.exportedAt === "string" && json.data && json.settings), true);
+  check("export data matches habits",
+    JSON.stringify(json.data.habits[0]) === JSON.stringify(app.data.habits[0]), true);
+  check("export includes customExercises", JSON.stringify(json.data.customExercises) === JSON.stringify({ Chest: ["Bench Press"] }), true);
+  check("export includes settings", json.settings.sound === true && json.settings.vibration === false, true);
+
+  // Import back into a fresh app
+  const app2 = loadApp({ habits: [], log: {}, customExercises: {} });
+  app2.handleImportText(JSON.stringify(json));
+  check("import restores habits", app2.data.habits.length === 1 && app2.data.habits[0].name === "Gym", true);
+  check("import restores customExercises", JSON.stringify(app2.data.customExercises) === JSON.stringify({ Chest: ["Bench Press"] }), true);
+}
+
+{
+  // Invalid files and wrong app names are rejected with no change
+  const app = loadApp({ habits: [habit({ name: "Keep Me" })] }, day(9));
+  const orig = JSON.stringify(app.data.habits);
+
+  app.handleImportText("not json");
+  check("invalid JSON rejected", JSON.stringify(app.data.habits) === orig, true);
+
+  app.handleImportText(JSON.stringify({ app: "other", version: 1, habits: [], log: {} }));
+  check("wrong app rejected", JSON.stringify(app.data.habits) === orig, true);
+
+  app.handleImportText(JSON.stringify({ app: "punchout", version: 2, habits: [], log: {} }));
+  check("wrong version rejected", JSON.stringify(app.data.habits) === orig, true);
+
+  app.handleImportText(JSON.stringify({ app: "punchout", version: 1, habits: "nope", log: {} }));
+  check("habits not array rejected", JSON.stringify(app.data.habits) === orig, true);
+
+  app.handleImportText(JSON.stringify({ app: "punchout", version: 1, habits: [], log: "nope" }));
+  check("log not object rejected", JSON.stringify(app.data.habits) === orig, true);
+}
+
+{
+  // Undo last restore works
+  const app = loadApp({ habits: [habit({ name: "Original" })] }, day(9));
+  const orig = JSON.stringify(app.data.habits);
+
+  const newData = {
+    app: "punchout", version: 1, exportedAt: new Date().toISOString(),
+    data: { habits: [habit({ name: "Replaced" })], log: {}, customExercises: {} },
+    settings: { sound: true, vibration: true }
+  };
+  app.handleImportText(JSON.stringify(newData));
+  check("restore replaced data", app.data.habits[0].name === "Replaced", true);
+  check("undo button copy saved", typeof sharedStorage["habitStore.v1.prev"] === "string", true);
+
+  app.undoRestore();
+  check("undo brings back original", app.data.habits[0].name === "Original", true);
+  check("undo clears prev copy", sharedStorage["habitStore.v1.prev"] === undefined, true);
+}
+
+{
+  // Hindi and emoji habit names round-trip unchanged
+  const hindi = habit({ id: "h-hindi", name: "नमस्ते योग", days: [0], reminder: "08:00", createdAt: day(9) });
+  const emoji = habit({ id: "h-emoji", name: "Gym 🏋️‍♂️", days: [0], reminder: "08:00", createdAt: day(9) });
+  const app = loadApp({ habits: [hindi, emoji], log: {} }, day(9));
+  const json = app.buildExportJSON();
+  check("export contains Hindi", json.data.habits[0].name === "नमस्ते योग", true);
+  check("export contains emoji", json.data.habits[1].name === "Gym 🏋️‍♂️", true);
+
+  const app2 = loadApp({ habits: [], log: {} });
+  app2.handleImportText(JSON.stringify(json));
+  check("import Hindi round-trip", app2.data.habits[0].name === "नमस्ते योग", true);
+  check("import emoji round-trip", app2.data.habits[1].name === "Gym 🏋️‍♂️", true);
+}
+
+{
+  // Old data (before the update) restores without a crash
+  const oldData = {
+    app: "punchout", version: 1, exportedAt: "2026-01-01T00:00:00.000Z",
+    data: {
+      habits: [{ id: "old1", name: "Old Habit", icon: "drop", type: "normal",
+        days: [0, 1, 2, 3, 4, 5, 6], reminder: "07:15", createdAt: day(9), exercises: ["run"] }],
+      log: {},
+      customExercises: {}
+    },
+    settings: { sound: true, vibration: true }
+  };
+  const app = loadApp({ habits: [], log: {} });
+  let threw = false;
+  try{
+    app.handleImportText(JSON.stringify(oldData));
+  }catch(e){ threw = true; }
+  check("old data restores without crash", !threw, true);
+  check("old habit loaded, exercises field ignored",
+    app.data.habits[0].name === "Old Habit" && app.data.habits[0].exercises === undefined, true);
 }
 
 console.log("\n" + pass + " passed, " + fail + " failed");
