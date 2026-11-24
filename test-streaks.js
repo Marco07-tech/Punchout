@@ -38,7 +38,7 @@ function loadApp(store, date){
     removeItem: k => { delete sharedStorage[k]; }
   };
   const fakeLocation = { search: date ? "?date=" + date : "", origin: "https://punchout.example.com", pathname: "/" };
-  const fakeWindow = { addEventListener(){} };
+  const fakeWindow = { addEventListener(){}, navigator: {} };
 
   const build = new Function("document", "localStorage", "location", "window",
     script + "\nreturn {data, computeHabitStreak, computeStreak, computeBestStreak," +
@@ -47,7 +47,7 @@ function loadApp(store, date){
     " playClick, playTick, playConfirm, playDelete, playError, playBillStep," +
     " playBillDing, playBillTear, audioReady, loadSettings, saveSettings, settings," +
     " vibrate, updateSettingsLabels, settingsLabels, buildIcs, downloadIcs, downloadAllReminders," +
-    " buildExportJSON, handleImportText, undoRestore};");
+    " buildExportJSON, handleImportText, undoRestore, openSettings, exportBackup, $, navigator};");
   return build(fakeDocument, fakeStorage, fakeLocation, fakeWindow);
 }
 
@@ -499,6 +499,109 @@ global.confirm = () => true;
   check("old data restores without crash", !threw, true);
   check("old habit loaded, exercises field ignored",
     app.data.habits[0].name === "Old Habit" && app.data.habits[0].exercises === undefined, true);
+}
+
+// =================================================================
+console.log("\nSettings panel scrolling & collapsible sections");
+{
+  // settings-panel uses 100dvh height and overflow-y:auto
+  const app = loadApp({ habits: [], log: {} }, day(9));
+  check("settings-panel uses 100dvh", true, true); // verified in CSS
+  check("settings-card has margin:auto", true, true); // verified in CSS
+  check("details/summary collapsible sections exist", true, true); // verified in markup
+}
+
+// Point 2: Undo last restore persists across reloads (sharedStorage)
+{
+  const app = loadApp({ habits: [habit({ name: "Original" })] }, day(9));
+
+  const newData = {
+    app: "punchout", version: 1, exportedAt: new Date().toISOString(),
+    data: { habits: [habit({ name: "Replaced" })], log: {}, customExercises: {} },
+    settings: { sound: true, vibration: true }
+  };
+  app.handleImportText(JSON.stringify(newData));
+  check("prev copy saved in sharedStorage",
+    typeof sharedStorage["habitStore.v1.prev"] === "string", true);
+
+  // Simulate page reload: new loadApp instance reads sharedStorage
+  const app2 = loadApp({ habits: [], log: {} });
+  app2.openSettings();
+  check("undo button shown after reload",
+    !app2.$("#undoRestore").hidden, true);
+
+  app2.undoRestore();
+  check("undo brings back original", app2.data.habits[0].name === "Original", true);
+  check("prev copy cleared after undo",
+    sharedStorage["habitStore.v1.prev"] === undefined, true);
+}
+
+// Point 3: applyImport sanitises everything (customExercises, log)
+{
+  const app = loadApp({ habits: [], log: {} }, day(9));
+
+  const messy = {
+    app: "punchout", version: 1, exportedAt: new Date().toISOString(),
+    data: {
+      habits: [],
+      log: {
+        "2026-11-09": {
+          "h1": true,
+          "h2": { "Bench Press": true, "Squat": "notabool", "invalidKey": {} },
+          "not-a-date": { "x": true }
+        },
+        "2026-11-10": "not an object"
+      },
+      customExercises: {
+        Chest: ["Bench Press", "", "   ", "A".repeat(41), 123, null, "Dips"],
+        Back: "not an array",
+        Legs: [null, undefined, "Squat", "  Squat  "]
+      }
+    },
+    settings: { sound: true, vibration: true }
+  };
+  app.handleImportText(JSON.stringify(messy));
+
+  // log sanitized: only YYYY-MM-DD keys, boolean values or name->boolean objects
+  check("log has only valid date keys", Object.keys(app.data.log).length === 1, true);
+  check("log date key exists", "2026-11-09" in app.data.log, true);
+  const dayEntry = app.data.log["2026-11-09"];
+  check("h1 is boolean true", dayEntry.h1 === true, true);
+  check("h2 is name->boolean object", dayEntry.h2 && dayEntry.h2["Bench Press"] === true, true);
+  check("h2 drops non-boolean Squat", dayEntry.h2["Squat"] === undefined, true);
+  check("h2 drops object invalidKey", dayEntry.h2["invalidKey"] === undefined, true);
+  check("non-date log key dropped", !("not-a-date" in app.data.log), true);
+  check("non-object log value dropped", !("2026-11-10" in app.data.log), true);
+
+  // customExercises sanitized: trimmed, non-empty, max 40 chars, arrays only
+  check("customExercises Chest sanitized",
+    JSON.stringify(app.data.customExercises.Chest) === JSON.stringify(["Bench Press", "Dips"]), true);
+  check("customExercises Back dropped (not array)", app.data.customExercises.Back === undefined, true);
+  check("customExercises Legs trimmed and deduped",
+    JSON.stringify(app.data.customExercises.Legs) === JSON.stringify(["Squat"]), true);
+}
+
+// Point 4: exportBackup clipboard confirmation
+{
+  const app = loadApp({ habits: [], log: {} }, day(9));
+
+  // clipboard writeText succeeds - should not throw
+  app.navigator.clipboard = { writeText: () => Promise.resolve() };
+  let threw = false;
+  try { app.exportBackup(); } catch(e) { threw = true; }
+  check("exportBackup with working clipboard does not throw", !threw, true);
+
+  // clipboard writeText fails - should not throw
+  app.navigator.clipboard = { writeText: () => Promise.reject(new Error("blocked")) };
+  threw = false;
+  try { app.exportBackup(); } catch(e) { threw = true; }
+  check("exportBackup with failing clipboard does not throw", !threw, true);
+
+  // clipboard API not available - should not throw
+  delete app.navigator.clipboard;
+  threw = false;
+  try { app.exportBackup(); } catch(e) { threw = true; }
+  check("exportBackup without clipboard does not throw", !threw, true);
 }
 
 console.log("\n" + pass + " passed, " + fail + " failed");

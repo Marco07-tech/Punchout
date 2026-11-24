@@ -131,10 +131,22 @@ button{background:none;border:0;cursor:pointer}
 @keyframes fade{from{opacity:0}}
 
 /* Settings panel overlay */
-.settings-panel{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:24px 16px}
+.settings-panel{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:0;width:100vw;height:100dvh;overflow-y:auto}
 .settings-panel[hidden]{display:none!important}
 .settings-backdrop{position:absolute;inset:0;background:var(--ink);opacity:.92;z-index:1}
-.settings-card{position:relative;z-index:2;max-width:330px;width:100%}
+.settings-card{position:relative;z-index:2;max-width:330px;width:100%;margin:auto;display:flex;flex-direction:column;gap:12px;padding:16px}
+
+/* details/summary styling for collapsible sections */
+.settings-card details{border:3px solid var(--ink);background:var(--paper);margin:8px 0}
+.settings-card summary{padding:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;cursor:pointer;outline:none}
+.settings-card summary::-webkit-details-marker{display:none}
+.settings-card summary:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+.settings-card details[open] summary{border-bottom:3px solid var(--ink);margin-bottom:0}
+
+/* file input and textarea like the app's other inputs */
+.settings-card input[type=file]{width:100%;padding:10px;background:var(--w);border:3px solid var(--ink);box-shadow:3px 3px 0 var(--ink);font-size:11px;font-family:var(--mono);margin-top:4px;margin-bottom:8px;color:inherit}
+.settings-card textarea{width:100%;padding:10px;background:var(--w);border:3px solid var(--ink);box-shadow:3px 3px 0 var(--ink);font-family:var(--mono);font-size:11px;color:inherit;box-sizing:border-box}
+.settings-card textarea:focus{background:var(--blue);box-shadow:5px 5px 0 var(--ink);outline:none}
 </style>
 </head>
 <body>
@@ -292,24 +304,29 @@ button{background:none;border:0;cursor:pointer}
     <label class="chip"><input type="checkbox" id="settingSound" checked><span id="settingSoundText">ON</span></label>
     <div class="lab up"><label for="settingVibration">Vibration</label></div>
     <label class="chip"><input type="checkbox" id="settingVibration" checked><span id="settingVibrationText">ON</span></label>
-    <button class="btn" id="addAllReminders" style="margin-top:18px">Add all reminders to calendar</button>
-    <p class="foot up" id="noHabitsMsg" hidden style="margin-top:6px">No habits yet. Add a habit first.</p>
-    <p class="foot up" id="reminderNoteAll" style="margin-top:6px">Reminders come from your calendar app. If you change the time or days, add the reminder again. Deleting a habit does not remove its calendar event.</p>
+    <!-- Calendar section (collapsible) -->
+    <details id="calendarDetails">
+      <summary>Calendar reminders</summary>
+      <button class="btn" id="addAllReminders" style="margin-top:10px">Add all reminders to calendar</button>
+      <p class="foot up" id="noHabitsMsg" hidden style="margin-top:6px">No habits yet. Add a habit first.</p>
+      <p class="foot up" id="reminderNoteAll" style="margin-top:6px">Reminders come from your calendar app. If you change the time or days, add the reminder again. Deleting a habit does not remove its calendar event.</p>
+    </details>
 
-    <!-- Backup section -->
-    <div class="up" style="margin-top:20px;padding-top:10px;border-top:3px solid #D8C9B2">
-      <b>Backup</b>
-    </div>
-    <button class="btn" id="exportBackup" style="margin-top:10px">Export my data</button>
-    <div id="exportNote" class="foot up" style="margin-top:6px;min-height:14px"></div>
-    <div class="lab up" style="margin-top:16px"><label for="importText">Import from file</label></div>
-    <input type="file" id="importFile" accept=".json" style="width:100%;margin-top:4px;margin-bottom:8px">
-    <div class="lab up"><label for="importText">Import from text</label></div>
-    <textarea id="importText" rows="3" style="width:100%;font-family:var(--mono);font-size:11px"></textarea>
-    <button class="btn" id="importBackup" style="margin-top:8px">Restore</button>
-    <div id="importNote" class="foot up" style="margin-top:6px;min-height:14px"></div>
-    <button class="btn" id="undoRestore" style="margin-top:10px" hidden>Undo last restore</button>
-    <button class="btn" id="settingsDone" style="margin-top:14px">Close <svg class="i"><use href="#back" style="transform:scaleX(-1);transform-origin:center"/></svg></button>
+    <!-- Backup section (collapsible) -->
+    <details id="backupDetails">
+      <summary>Backup</summary>
+      <button class="btn" id="exportBackup" style="margin-top:10px">Export my data</button>
+      <div id="exportNote" class="foot up" style="margin-top:6px;min-height:14px"></div>
+      <div class="lab up" style="margin-top:14px"><label for="importFile">Import from file</label></div>
+      <input type="file" id="importFile" accept=".json" style="width:100%;margin-top:4px;margin-bottom:8px">
+      <div class="lab up" style="margin-top:10px"><label for="importText">Import from text</label></div>
+      <textarea id="importText" rows="3" style="width:100%;font-family:var(--mono);font-size:11px"></textarea>
+      <button class="btn" id="importBackup" style="margin-top:8px">Restore</button>
+      <div id="importNote" class="foot up" style="margin-top:6px;min-height:14px"></div>
+      <button class="btn" id="undoRestore" style="margin-top:10px" hidden>Undo last restore</button>
+    </details>
+
+    <button class="btn" id="settingsDone" style="margin-top:10px">Close <svg class="i"><use href="#back" style="transform:scaleX(-1);transform-origin:center"/></svg></button>
   </div>
 </div>
 
@@ -1196,6 +1213,9 @@ function openSettings(){
   $("#settingSound").checked = settings.sound;
   $("#settingVibration").checked = settings.vibration;
   updateSettingsLabels();
+  // Show Undo last restore whenever a previous copy exists.
+  const prev = localStorage.getItem("habitStore.v1.prev");
+  $("#undoRestore").hidden = !prev;
   $("#settingsPanel").hidden = false;
   $("#settingsClose").focus({preventScroll:true});
 }
@@ -1422,14 +1442,15 @@ function exportBackup(){
 
   downloadText(filename, text, "application/json");
 
-  try{
-    const nav = window && window.navigator;
-    if(nav && nav.clipboard && nav.clipboard.writeText){
-      nav.clipboard.writeText(text);
-    }
-  }catch(e){}
-
-  $("#exportNote").textContent = "Exported " + filename + " and copied to clipboard.";
+  const nav = window && window.navigator;
+  if(nav && nav.clipboard && nav.clipboard.writeText){
+    nav.clipboard.writeText(text).then(
+      () => { $("#exportNote").textContent = "Exported " + filename + " and copied to clipboard."; },
+      () => { $("#exportNote").textContent = "Exported " + filename + ". The clipboard was blocked, so use the downloaded file."; }
+    );
+  }else{
+    $("#exportNote").textContent = "Exported " + filename + ". The clipboard was blocked, so use the downloaded file.";
+  }
 }
 
 // Strictly validate an imported backup object before anything is changed.
@@ -1444,13 +1465,48 @@ function validateImport(parsed){
 }
 
 // Replace app data with repaired import data, then redraw Home.
+// Sanitises everything: habits via fixHabit, customExercises as trimmed
+// non-empty strings (max 40 chars), log as YYYY-MM-DD keys with boolean
+// values (normal) or name->boolean objects (gym). Drops anything else.
 function applyImport(parsed){
   const d = parsed.data;
   const habits = Array.isArray(d.habits)
     ? d.habits.filter(h => h && typeof h === "object").map(fixHabit).filter(h => h)
     : [];
-  const log = (d.log && typeof d.log === "object" && !Array.isArray(d.log)) ? d.log : {};
-  const customExercises = (d.customExercises && typeof d.customExercises === "object" && !Array.isArray(d.customExercises)) ? d.customExercises : {};
+
+  const rawLog = (d.log && typeof d.log === "object" && !Array.isArray(d.log)) ? d.log : {};
+  const log = {};
+  Object.keys(rawLog).forEach(key => {
+    if(!isDateKey(key)) return;
+    const day = rawLog[key];
+    if(!day || typeof day !== "object" || Array.isArray(day)) return;
+    const cleanDay = {};
+    Object.keys(day).forEach(habitId => {
+      const val = day[habitId];
+      if(typeof val === "boolean"){
+        cleanDay[habitId] = val;
+      }else if(val && typeof val === "object" && !Array.isArray(val)){
+        const cleanEntry = {};
+        Object.keys(val).forEach(name => {
+          const v = val[name];
+          if(typeof v === "boolean") cleanEntry[name] = v;
+        });
+        if(Object.keys(cleanEntry).length) cleanDay[habitId] = cleanEntry;
+      }
+    });
+    if(Object.keys(cleanDay).length) log[key] = cleanDay;
+  });
+
+  const rawEx = (d.customExercises && typeof d.customExercises === "object" && !Array.isArray(d.customExercises)) ? d.customExercises : {};
+  const customExercises = {};
+  Object.keys(rawEx).forEach(group => {
+    const arr = rawEx[group];
+    if(!Array.isArray(arr)) return;
+    const clean = [...new Set(arr.filter(n => typeof n === "string")
+      .map(n => n.trim())
+      .filter(n => n.length > 0 && n.length <= 40))];
+    if(clean.length) customExercises[group] = clean;
+  });
 
   data.habits = habits;
   data.log = log;
