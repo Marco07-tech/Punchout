@@ -236,7 +236,7 @@ button{background:none;border:0;cursor:pointer}
 <main class="screen" id="picker">
   <header class="top">
     <button class="sq" data-go="home" aria-label="Back"><svg class="i"><use href="#back"/></svg></button>
-    <div class="t"><small class="up">Order slip #042 &bull; Habit type: gym</small><b>Select exercises</b></div>
+    <div class="t"><small class="up">Punchout</small><b>Select exercises</b></div>
     <span class="sq" style="background:var(--blue)"><svg class="i"><use href="#gym"/></svg></span>
   </header>
 
@@ -336,7 +336,7 @@ const dayWord = n => n === 1 ? " DAY" : " DAYS";
 const CATEGORIES = ["Water","Gym","Study","Code","Wake up early","Sleep on time","Meditation","Yoga","Walking","Reading","Journaling","No sugar","Healthy meal","Vitamins","No social media","Expense tracking","Custom"];
 const CAT_ICON = {Water:"drop",Gym:"gym",Study:"book",Code:"code",Custom:"plus"};
 function catIcon(c){ return CAT_ICON[c] || "info"; }
-function catType(c){ return (c === "Gym" || c === "Study") ? "gym" : "normal"; }
+function catType(c){ return c === "Gym" ? "gym" : (c === "Study" ? "items" : "normal"); }
 const STORE_KEY = "habitStore.v1";
 
 function emptyData(){ return { habits: [], log: {}, customExercises: {} }; }
@@ -474,7 +474,7 @@ function lastWorkoutNames(habitId, beforeKey){
 // Is one habit done on one day? A gym habit needs every exercise of THAT
 // DAY'S list ticked; before a list exists it counts as pending (not done).
 function isHabitDone(h, key){
-  if(h.type === "gym"){
+  if(h.type === "gym" || h.type === "items"){
     const entry = dayEntry(key, h.id);
     if(!entry) return false;
     const names = Object.keys(entry);
@@ -499,7 +499,7 @@ function allDoneToday(key){
 function setDone(h, key, done, exercise){
   if(!data.log[key]) data.log[key] = {};
   const day = data.log[key];
-  if(h.type === "gym"){
+  if(h.type === "gym" || h.type === "items"){
     if(!day[h.id] || typeof day[h.id] !== "object") day[h.id] = {};
     // Keep the key with false so an unticked exercise stays in the day's list.
     day[h.id][exercise] = done === true;
@@ -760,10 +760,16 @@ function updateRestNote(){
   const cat = document.querySelector('input[name="category"]:checked');
   $("#restNote").hidden = !(cat && cat.value === "Gym");
 }
+let lastAutoName = "Water";
 $("#catPicker").addEventListener("change", e => {
   const r = e.target.closest('input[name="category"]'); if(!r) return;
-  if(r.value !== "Custom") $("#habitName").value = r.value;
-  else $("#habitName").value = "";
+  const current = $("#habitName").value.trim();
+  if(current === "" || current === lastAutoName){
+    if(r.value !== "Custom"){ $("#habitName").value = r.value; lastAutoName = r.value; }
+    else { $("#habitName").value = ""; lastAutoName = ""; }
+  } else {
+    if(r.value !== "Custom") lastAutoName = r.value;
+  }
   updateRestNote();
 });
 $("#newHabit").addEventListener("click", e => {
@@ -825,6 +831,13 @@ function renderSlip(){
 // Open the picker for one habit on one day, starting from that day's list.
 function openPicker(habitId, key){
   pickerTarget = { habitId: habitId, key: key };
+  const h = data.habits.find(x => x.id === habitId);
+  const isStudy = h && h.category === "Study";
+  const titleEl = document.querySelector("#picker .top b");
+  if(titleEl) titleEl.textContent = isStudy ? "Select topics" : "Select exercises";
+  const sub = document.querySelector("#picker .card b");
+  if(sub) sub.textContent = isStudy ? "Select names only." : "Select names only.";
+  $("#search").placeholder = isStudy ? "Search topics..." : "Search exercises...";
   picked.clear();
   dayExercises(key, habitId).forEach(n => picked.add(n));
   const L = (data.habits.find(x=>x.id===habitId)||{}).category === "Study" ? studyLib : lib;
@@ -883,7 +896,7 @@ function habitCard(h, today){
     <button class="del" data-id="${esc(h.id)}" aria-label="Delete ${esc(h.name)}"><svg class="i"><use href="#trash"/></svg></button>
     ${h.type === "gym" ? "" : `<input class="check" type="checkbox" data-h="${esc(h.id)}" aria-label="${esc(h.name)}"${done ? " checked" : ""}>`}
   </div>`;
-  if(h.type !== "gym") return `<article class="card habit${done ? " ok" : ""}">${head}</article>`;
+  if(h.type !== "gym" && h.type !== "items") return `<article class="card habit${done ? " ok" : ""}">${head}</article>`;
   const entry = dayEntry(today, h.id) || {};
   const names = dayExercises(today, h.id);
   // "Repeat last workout" is only offered when an earlier list exists.
@@ -1024,9 +1037,6 @@ function buildReceipt(){
   const list = scheduledOn(today);
   const done = list.filter(h => isHabitDone(h, today)).length;
   const streak = computeStreak(today);
-  const best = computeBestStreak(today);
-  const bestBefore = computeBestStreak(yesterdayKey(today));
-  const rest = restDaysUsed(today);
   const d = parseKey(today);
   const now = new Date();
   const when = (d.toLocaleDateString("en-GB", {weekday:"short", day:"2-digit", month:"short", year:"numeric"}) + " " +
@@ -1036,7 +1046,7 @@ function buildReceipt(){
   list.forEach(h => {
     const tick = isHabitDone(h, today) ? "✓" : " ";
     let line = esc(h.name);
-    if(h.type === "gym"){
+    if(h.type === "gym" || h.type === "items"){
       const names = dayExercises(today, h.id);
       if(names.length) line += " — " + names.join(", ");
     }
