@@ -1,0 +1,1633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Punchout</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* ===== TOKENS (from the Stitch design system) ===== */
+:root{--ink:#3B2418;--paper:#F2E8DA;--blue:#8EC5FF;--w:#fff;
+--sans:"Space Grotesk",system-ui,sans-serif;--mono:"Space Mono",ui-monospace,monospace}
+*{box-sizing:border-box;margin:0;padding:0;border-radius:0}
+[hidden]{display:none!important}
+body{background:var(--paper);color:var(--ink);font:500 15px/1.4 var(--sans)}
+button,input{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+.app{max-width:430px;margin:0 auto;min-height:100vh;padding:0 16px 130px}
+.screen{display:none}.screen.on{display:block}
+.i{width:1.3em;height:1.3em;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:square;flex-shrink:0}
+.up{text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+.mono{font-family:var(--mono)}
+
+/* ===== SHARED PARTS ===== */
+.top{display:flex;align-items:center;gap:12px;margin:0 -16px 16px;padding:14px 16px;border-bottom:6px solid var(--ink)}
+.top .t{flex:1;min-width:0}
+.top small{display:block;font-size:11px}
+.top b{font-size:24px;letter-spacing:-.02em;text-transform:uppercase;line-height:1.1}
+.sq{width:44px;height:44px;display:grid;place-items:center;flex-shrink:0;background:var(--w);border:3px solid var(--ink);box-shadow:3px 3px 0 var(--ink)}
+.sq.dk{background:var(--ink);color:var(--paper)}
+.btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:16px;background:var(--blue);border:3px solid var(--ink);box-shadow:4px 4px 0 var(--ink);font-weight:700;font-size:18px;text-transform:uppercase}
+.btn.sm{width:auto;margin-top:12px;padding:8px 12px;font-size:13px}
+.card{background:var(--w);border:3px solid var(--ink);box-shadow:6px 6px 0 var(--ink);padding:16px}
+.tag{display:inline-block;margin-top:8px;padding:4px 8px;background:var(--blue);color:var(--ink);border:2px solid var(--ink);font-size:12px}
+.note{display:flex;gap:12px;align-items:flex-start;margin-top:14px;padding:14px;background:#EADFCC;border:3px solid var(--ink);box-shadow:4px 4px 0 var(--ink)}
+.lab{display:flex;justify-content:space-between;margin:24px 0 8px;font-size:12px}
+.input{width:100%;padding:14px;background:var(--w);border:3px solid var(--ink);box-shadow:3px 3px 0 var(--ink);font-size:17px}
+.input::placeholder{color:var(--ink);opacity:.6}
+.input:focus{background:var(--blue);box-shadow:5px 5px 0 var(--ink);outline:none}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:12px}
+.row3{display:flex;flex-wrap:wrap;gap:10px}
+/* labels that wrap a hidden radio/checkbox */
+.chip input,.tile input{position:absolute;opacity:0;pointer-events:none}
+.chip,.tile{position:relative;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;background:var(--w);border:3px solid var(--ink);box-shadow:3px 3px 0 var(--ink);font-weight:700;text-transform:uppercase;font-size:14px;cursor:pointer}
+.tile{flex-direction:column;font-size:12px;padding:14px 4px}
+.chip:has(input:checked),.tile:has(input:checked),.chip.sel{background:var(--blue)}
+.chip.dk.sel{background:var(--ink);color:var(--paper)}
+.chip:has(:focus-visible),.tile:has(:focus-visible){outline:3px solid var(--ink);outline-offset:3px}
+.chip.dash{border-style:dashed;box-shadow:none;text-transform:none}
+.chip:has(input:disabled){opacity:.55;cursor:not-allowed}
+.days .chip{padding:10px 0;font-size:15px}
+.btn:active,.sq:active,.chip:active,.tile:active,.nv:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--ink)}
+
+/* ===== HOME ===== */
+.meta{display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:14px}
+.order{padding:4px 12px;background:var(--blue);border:3px solid var(--ink);font-family:var(--mono);letter-spacing:.14em}
+.sum{display:flex;gap:18px;align-items:center;padding:18px;background:var(--ink);color:var(--paper);border:3px solid var(--ink);box-shadow:6px 6px 0 var(--ink)}
+.ringbox{position:relative;width:92px;height:92px;flex-shrink:0;background:var(--w);color:var(--ink);border:3px solid var(--ink)}
+.ringbox svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ringbox circle{fill:none;stroke-width:14}
+.trk{stroke:var(--paper)}.bar{stroke:var(--blue);stroke-dasharray:238.8;stroke-dashoffset:179.1}
+.pct{position:absolute;inset:0;display:grid;place-content:center;text-align:center;line-height:1.15}
+.pct b{font-size:18px}.pct span{font-size:11px}
+.sum h2{font-size:26px;letter-spacing:-.02em;line-height:1.1}
+.sum .bl{color:var(--blue)}
+.mani{display:flex;justify-content:space-between;margin:24px 0 12px;padding-bottom:8px;border-bottom:3px solid var(--ink);font-size:12px}
+.habit{margin-bottom:18px}
+.hr{display:flex;align-items:center;gap:14px}
+.ic{width:48px;height:48px;display:grid;place-items:center;background:var(--paper);border:3px solid var(--ink)}
+.ok .ic{background:var(--blue)}
+.hr .tx{flex:1;min-width:0}
+.hn{font-size:19px;font-weight:700;text-transform:uppercase;line-height:1.15}
+.hs{font:400 13px var(--mono);display:flex;align-items:center;gap:4px}
+.check{appearance:none;-webkit-appearance:none;width:28px;height:28px;flex-shrink:0;background:var(--w);border:3px solid var(--ink);display:grid;place-items:center;cursor:pointer}
+.check:checked{background:var(--blue);box-shadow:2px 2px 0 var(--ink)}
+.check:checked::after{content:"\2713";font-weight:700;font-size:18px;line-height:1}
+/* delete button on a habit card */
+.del{width:38px;height:38px;display:grid;place-items:center;flex-shrink:0;background:var(--w);border:3px solid var(--ink);box-shadow:2px 2px 0 var(--ink)}
+.del .i{width:18px;height:18px}
+.del:active{transform:translate(2px,2px);box-shadow:0 0 0 var(--ink)}
+/* the small action buttons on a gym card */
+.acts{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.acts .btn.sm{margin-top:0}
+.routine{margin-top:14px;padding:12px;background:var(--paper);border:3px solid var(--ink)}
+.rh{display:flex;justify-content:space-between;padding-bottom:8px;margin-bottom:10px;border-bottom:3px solid #D8C9B2;font-size:11px}
+.ex{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding:10px 12px;background:var(--w);border:3px solid var(--ink);box-shadow:2px 2px 0 var(--ink);font-weight:700;cursor:pointer}
+.ex .check{width:24px;height:24px}
+.punch{display:flex;align-items:center;gap:10px;margin-top:6px;padding:14px;border:3px dashed var(--ink);font:700 12px var(--mono);letter-spacing:.04em}
+.punch b{margin-left:auto}
+
+/* ===== PICKER ===== */
+.slip{display:flex;justify-content:space-between;padding:6px 0;font:400 13px var(--mono)}
+.slip i{font-style:normal;padding:0 8px;background:var(--ink);color:var(--blue);font-weight:700;font-size:11px;line-height:20px}
+.tally{display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:3px solid var(--ink);font:700 13px var(--mono)}
+.foot{margin-top:18px;text-align:center;font:400 11px var(--mono);letter-spacing:.1em;opacity:.8}
+
+/* ===== NAV ===== */
+.nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;display:flex;align-items:flex-end;justify-content:space-around;padding:10px 16px calc(12px + env(safe-area-inset-bottom,0px));background:var(--paper);border-top:6px solid var(--ink)}
+.nv{display:grid;place-items:center;gap:2px;padding:8px 18px;border:3px solid transparent;font-size:11px;font-weight:700;letter-spacing:.06em}
+.nv.cur{background:var(--blue);border-color:var(--ink);box-shadow:3px 3px 0 var(--ink)}
+.nv:disabled{opacity:.5;cursor:not-allowed}
+.nv.add{width:62px;height:62px;margin-top:-36px;background:var(--blue);border-color:var(--ink);box-shadow:4px 4px 0 var(--ink)}
+.nv.add .i{width:30px;height:30px}
+
+/* ===== BILL ===== */
+.bill{position:fixed;inset:0;z-index:50;display:none;overflow-y:auto;padding:24px 16px 40px;background:var(--ink)}
+.bill.open{display:block}
+.pr{max-width:350px;margin:0 auto}
+.pb{position:relative;z-index:2;height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;background:var(--blue);border:3px solid var(--ink);box-shadow:0 0 0 3px var(--paper)}
+.pb i{width:10px;height:10px;background:var(--ink)}
+.pr.printing .pb i{animation:blink .35s steps(2) infinite}
+.slot{position:absolute;left:14px;right:14px;bottom:8px;height:8px;background:var(--ink)}
+.pw{position:relative;z-index:1;margin:-6px 14px 0;padding-bottom:14px;overflow:hidden}
+.paper{position:relative;padding:22px 16px;background:var(--w);color:var(--ink);border:3px solid var(--ink);border-bottom:0;font:400 12px/1.6 var(--mono);animation:print 3.2s steps(40,end) both}
+.zig{position:absolute;left:-3px;right:-3px;top:calc(100% - 1px);width:calc(100% + 6px);height:11px}
+.zig polygon{fill:var(--w);stroke:var(--ink);stroke-width:3;vector-effect:non-scaling-stroke}
+.rc{text-align:center}.rt{font-weight:700;font-size:15px;letter-spacing:.1em}
+.ri{display:flex;justify-content:space-between;gap:10px}
+.ri.hd,.ri.tt{font-weight:700}
+.ri.sub{padding-left:10px;font-size:11px}
+.dash{border:0;border-top:2px dashed var(--ink);margin:10px 0}
+.dbl{border:0;border-top:4px double var(--ink);margin:10px 0}
+.best{margin:12px 0;padding:8px;text-align:center;font-weight:700;background:var(--blue);border:3px solid var(--ink);box-shadow:4px 4px 0 var(--ink)}
+.barcode{height:46px;margin:12px 0 4px;background:repeating-linear-gradient(90deg,var(--ink) 0 2px,transparent 2px 4px,var(--ink) 4px 5px,transparent 5px 8px,var(--ink) 8px 11px,transparent 11px 13px)}
+.bill .btn{margin-top:26px;animation:fade .4s 3.3s both}
+@keyframes print{from{transform:translateY(-100%)}}
+@keyframes blink{50%{opacity:.2}}
+@keyframes fade{from{opacity:0}}
+
+/* Settings panel overlay */
+.settings-panel{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:0;width:100vw;height:100dvh;overflow-y:auto}
+.settings-panel[hidden]{display:none!important}
+.settings-backdrop{position:absolute;inset:0;background:var(--ink);opacity:.92;z-index:1}
+.settings-card{position:relative;z-index:2;max-width:330px;width:100%;margin:auto;display:flex;flex-direction:column;gap:12px;padding:16px}
+
+/* details/summary styling for collapsible sections */
+.settings-card details{border:3px solid var(--ink);background:var(--paper);margin:8px 0}
+.settings-card summary{padding:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;cursor:pointer;outline:none}
+.settings-card summary::-webkit-details-marker{display:none}
+.settings-card summary:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+.settings-card details[open] summary{border-bottom:3px solid var(--ink);margin-bottom:0}
+
+/* file input and textarea like the app's other inputs */
+.settings-card input[type=file]{width:100%;padding:10px;background:var(--w);border:3px solid var(--ink);box-shadow:3px 3px 0 var(--ink);font-size:11px;font-family:var(--mono);margin-top:4px;margin-bottom:8px;color:inherit}
+.settings-card textarea{width:100%;padding:10px;background:var(--w);border:3px solid var(--ink);box-shadow:3px 3px 0 var(--ink);font-family:var(--mono);font-size:11px;color:inherit;box-sizing:border-box}
+.settings-card textarea:focus{background:var(--blue);box-shadow:5px 5px 0 var(--ink);outline:none}
+</style>
+</head>
+<body>
+
+<!-- Icons: drawn once, reused with <use> -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="drop" viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></symbol>
+<symbol id="gym" viewBox="0 0 24 24"><path d="M6 7v10M3 10v4M18 7v10M21 10v4M6 12h12"/></symbol>
+<symbol id="book" viewBox="0 0 24 24"><path d="M3 5h7a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H3zM21 5h-7a2 2 0 0 0-2 2v12a2 2 0 0 1 2-2h7z"/></symbol>
+<symbol id="code" viewBox="0 0 24 24"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/></symbol>
+<symbol id="home" viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></symbol>
+<symbol id="plus" viewBox="0 0 24 24"><path d="M12 4v16M4 12h16"/></symbol>
+<symbol id="stats" viewBox="0 0 24 24"><path d="M5 20v-8M12 20V5M19 20V9"/></symbol>
+<symbol id="user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></symbol>
+<symbol id="back" viewBox="0 0 24 24"><path d="M20 12H5M11 5l-7 7 7 7"/></symbol>
+<symbol id="flame" viewBox="0 0 24 24"><path d="M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z"/></symbol>
+<symbol id="info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></symbol>
+<symbol id="receipt" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/></symbol>
+<symbol id="trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6M14 11v6"/></symbol>
+<symbol id="pencil" viewBox="0 0 24 24"><path d="M4 20h4L20 8l-4-4L4 16v4zM14 6l4 4"/></symbol>
+</svg>
+
+<div class="app">
+
+<!-- ================= HOME ================= -->
+<main class="screen on" id="home">
+  <header class="top">
+    <div class="t"><small class="up">Punchout</small><b>Today</b></div>
+    <button class="sq dk" data-go="settings" aria-label="Settings"><svg class="i"><use href="#user"/></svg></button>
+  </header>
+
+  <div class="meta up"><span id="todayDate">—</span><span class="order" id="orderNo">Order #0000</span></div>
+
+  <section class="sum">
+    <div class="ringbox" id="ring" role="img" aria-label="0 percent complete">
+      <svg viewBox="0 0 100 100"><circle class="trk" cx="50" cy="50" r="38"/><circle class="bar" id="ringBar" cx="50" cy="50" r="38"/></svg>
+      <div class="pct"><b id="pctText">0%</b><span id="fracText">0/0</span></div>
+    </div>
+    <div>
+      <h2 class="up" id="doneText">0 of 0 done</h2>
+      <p style="margin-top:4px">Best streak: <b class="bl up" id="bestStreak">0 days</b></p>
+      <span class="tag up" id="restTag">Rest days used: 0 of 2</span><br>
+      <button class="btn sm" id="billBtn" hidden>Today’s bill <svg class="i"><use href="#receipt"/></svg></button>
+    </div>
+  </section>
+
+  <div class="mani up"><span id="manifest">Daily manifest</span><span style="font-weight:500">Punch to register</span></div>
+
+  <!-- The habit list is built from the saved data by JavaScript -->
+  <div id="habitList"></div>
+
+  <div class="punch"><svg class="i"><use href="#receipt"/></svg><span>END OF DAY PUNCHOUT: 23:59</span><b id="pending">0 PENDING</b></div>
+</main>
+
+<!-- ================= NEW HABIT ================= -->
+<main class="screen" id="newHabit">
+  <header class="top">
+    <button class="sq" data-go="home" aria-label="Back"><svg class="i"><use href="#back"/></svg></button>
+    <div class="t"><small class="up">Punchout</small><b id="habitTitle">New habit</b></div>
+  </header>
+  <div class="row2" style="align-items:center;font-size:12px"><span class="up">Item registration // Mod. 0042</span><span class="tag up" style="margin:0;justify-self:end;background:#EADFCC">Status: new entry</span></div>
+
+  <div class="lab up"><label for="habitName">Habit name</label><span style="font-weight:500">REQ*</span></div>
+  <input class="input" id="habitName" type="text" placeholder="e.g. Read for 30 minutes">
+
+  <div class="lab up">Choose category</div>
+  <div class="row3" style="display:grid;grid-template-columns:repeat(4,1fr)" id="catPicker"></div>
+
+  <div class="lab up"><span>Select days</span><span style="font-weight:500">Tap to turn on or off</span></div>
+  <div class="days">
+    <label class="chip"><input type="checkbox" data-day="0" aria-label="Monday" checked>M</label><label class="chip"><input type="checkbox" data-day="1" aria-label="Tuesday" checked>T</label><label class="chip"><input type="checkbox" data-day="2" aria-label="Wednesday" checked>W</label><label class="chip"><input type="checkbox" data-day="3" aria-label="Thursday" checked>T</label><label class="chip"><input type="checkbox" data-day="4" aria-label="Friday" checked>F</label><label class="chip"><input type="checkbox" data-day="5" aria-label="Saturday" checked>S</label><label class="chip"><input type="checkbox" data-day="6" aria-label="Sunday" checked>S</label>
+  </div>
+  <div class="note" id="restNote" hidden><svg class="i"><use href="#info"/></svg><span>Gym habits allow a maximum of 2 rest days per week before the streak resets.</span></div>
+
+  <div class="lab up"><label for="reminder">Reminder time</label></div>
+  <input class="input" id="reminder" type="time" value="07:15">
+
+  <div class="note" id="formError" hidden><svg class="i"><use href="#info"/></svg><span id="formErrorText"></span></div>
+
+  <button class="btn" id="saveHabit" style="margin-top:28px;font-size:22px"><span id="saveLabel">Save habit</span> <svg class="i"><use href="#receipt"/></svg></button>
+  <button class="btn" id="addReminder" style="margin-top:12px;font-size:16px" hidden>Add reminder to calendar</button>
+  <p class="foot up" id="reminderNote" hidden style="margin-top:6px">Reminders come from your calendar app. If you change the time or days, add the reminder again. Deleting a habit does not remove its calendar event.</p>
+  <p class="foot up">&#9632; Printed &amp; sealed in store &#9632;</p>
+</main>
+
+<!-- ================= GYM EXERCISE PICKER ================= -->
+<main class="screen" id="picker">
+  <header class="top">
+    <button class="sq" data-go="home" aria-label="Back"><svg class="i"><use href="#back"/></svg></button>
+    <div class="t"><small class="up">Order slip #042 &bull; Habit type: gym</small><b>Select exercises</b></div>
+    <span class="sq" style="background:var(--blue)"><svg class="i"><use href="#gym"/></svg></span>
+  </header>
+
+  <div class="card" style="box-shadow:4px 4px 0 var(--ink)">
+    <b>Select names only. No sets, reps or weights.</b>
+    <p class="mono" style="font-size:12px;margin-top:4px">Items register to your daily checklist upon checkout.</p>
+  </div>
+
+  <div class="lab up"><span>[1] Department / muscle group</span></div>
+  <div class="row3" id="groups"></div>
+
+  <input class="input" id="search" type="search" placeholder="Search exercises..." aria-label="Search exercises" style="margin-top:18px">
+
+  <div class="lab up"><span id="avail">[2] Available items</span></div>
+  <div class="row3" id="items"></div>
+
+  <section class="card" style="margin-top:24px">
+    <div class="up" style="display:flex;justify-content:space-between;align-items:center;font-size:13px">Register slip tape <span class="tag" style="margin:0" id="slipCount">0 selected</span></div>
+    <hr class="dash">
+    <div id="slip"></div>
+    <div class="tally"><span>TOTAL ITEM TALLY:</span><span id="tally">00 ITEMS</span></div>
+  </section>
+
+  <button class="btn" id="confirm" style="margin-top:24px">Confirm exercises <svg class="i"><use href="#back" style="transform:scaleX(-1);transform-origin:center"/></svg></button>
+  <p class="foot up">*** Store policy: no sets / reps logged here ***</p>
+</main>
+
+</div>
+
+<nav class="nav" aria-label="Main">
+  <button class="nv cur" data-go="home"><svg class="i"><use href="#home"/></svg>HOME</button>
+  <button class="nv add" data-go="newHabit" aria-label="Add habit"><svg class="i"><use href="#plus"/></svg></button>
+  <button class="nv" disabled><svg class="i"><use href="#stats"/></svg>STATS</button>
+</nav>
+
+<!-- ================= TODAY'S BILL ================= -->
+<div class="bill" id="bill" role="dialog" aria-modal="true" aria-label="Today’s bill">
+  <div class="pr" id="printer">
+    <div class="pb"><i></i><span class="slot"></span><i></i></div>
+    <div class="pw" id="paperWin"></div>
+    <button class="btn" id="billClose">Close <svg class="i"><use href="#back"/></svg></button>
+  </div>
+</div>
+
+<!-- ================= SETTINGS PANEL ================= -->
+<div class="settings-panel" id="settingsPanel" hidden role="dialog" aria-modal="true" aria-label="Settings">
+  <div class="settings-backdrop" id="settingsBackdrop"></div>
+  <div class="card settings-card">
+    <div class="top">
+      <button class="sq" id="settingsClose" aria-label="Close"><svg class="i"><use href="#back"/></svg></button>
+      <div class="t"><b>Settings</b></div>
+    </div>
+    <div class="lab up"><label for="settingSound">Sound</label></div>
+    <label class="chip"><input type="checkbox" id="settingSound" checked><span id="settingSoundText">ON</span></label>
+    <div class="lab up"><label for="settingVibration">Vibration</label></div>
+    <label class="chip"><input type="checkbox" id="settingVibration" checked><span id="settingVibrationText">ON</span></label>
+    <!-- Calendar section (collapsible) -->
+    <details id="calendarDetails">
+      <summary>Calendar reminders</summary>
+      <button class="btn" id="addAllReminders" style="margin-top:10px">Add all reminders to calendar</button>
+      <p class="foot up" id="noHabitsMsg" hidden style="margin-top:6px">No habits yet. Add a habit first.</p>
+      <p class="foot up" id="reminderNoteAll" style="margin-top:6px">Reminders come from your calendar app. If you change the time or days, add the reminder again. Deleting a habit does not remove its calendar event.</p>
+    </details>
+
+    <!-- Backup section (collapsible) -->
+    <details id="backupDetails">
+      <summary>Backup</summary>
+      <button class="btn" id="exportBackup" style="margin-top:10px">Export my data</button>
+      <div id="exportNote" class="foot up" style="margin-top:6px;min-height:14px"></div>
+      <div class="lab up" style="margin-top:14px"><label for="importFile">Import from file</label></div>
+      <input type="file" id="importFile" accept=".json" style="width:100%;margin-top:4px;margin-bottom:8px">
+      <div class="lab up" style="margin-top:10px"><label for="importText">Import from text</label></div>
+      <textarea id="importText" rows="3" style="width:100%;font-family:var(--mono);font-size:11px"></textarea>
+      <button class="btn" id="importBackup" style="margin-top:8px">Restore</button>
+      <div id="importNote" class="foot up" style="margin-top:6px;min-height:14px"></div>
+      <button class="btn" id="undoRestore" style="margin-top:10px" hidden>Undo last restore</button>
+    </details>
+
+    <button class="btn" id="settingsDone" style="margin-top:10px">Close <svg class="i"><use href="#back" style="transform:scaleX(-1);transform-origin:center"/></svg></button>
+  </div>
+</div>
+
+<script>
+/* ==========================================================
+   PUNCHOUT - real data in localStorage
+   Everything lives under one key: "habitStore.v1"
+   ========================================================== */
+
+const $ = s => document.querySelector(s);
+// Makes any text safe to put inside HTML.
+const esc = t => String(t).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad = n => String(n).padStart(2, "0");
+// The bill writes "1 DAY" (singular) instead of "1 DAYS".
+const dayWord = n => n === 1 ? " DAY" : " DAYS";
+
+/* ---------- 1. THE STORE (load + save) ---------- */
+const CATEGORIES = ["Water","Gym","Study","Code","Wake up early","Sleep on time","Meditation","Yoga","Walking","Reading","Journaling","No sugar","Healthy meal","Vitamins","No social media","Expense tracking","Custom"];
+const CAT_ICON = {Water:"drop",Gym:"gym",Study:"book",Code:"code",Custom:"plus"};
+function catIcon(c){ return CAT_ICON[c] || "info"; }
+function catType(c){ return (c === "Gym" || c === "Study") ? "gym" : "normal"; }
+const STORE_KEY = "habitStore.v1";
+
+function emptyData(){ return { habits: [], log: {}, customExercises: {} }; }
+
+// Read the saved data. Missing or broken data gives an empty app instead of a crash.
+function loadData(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(!raw) return emptyData();
+    const parsed = JSON.parse(raw);
+    if(!parsed || typeof parsed !== "object") return emptyData();
+    return {
+      habits: Array.isArray(parsed.habits)
+        ? parsed.habits.filter(h => h && typeof h === "object").map(fixHabit).filter(h => h)
+        : [],
+      log: (parsed.log && typeof parsed.log === "object" && !Array.isArray(parsed.log)) ? parsed.log : {},
+      customExercises: (parsed.customExercises && typeof parsed.customExercises === "object" && !Array.isArray(parsed.customExercises)) ? parsed.customExercises : {}
+    };
+  }catch(e){
+    console.warn("Saved habits could not be read - starting empty.", e);
+    return emptyData();
+  }
+}
+
+// Write everything back to the store.
+function saveData(){
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(data)); }
+  catch(e){ console.warn("Could not save habits.", e); }
+}
+
+// Give every habit all the fields we expect, so odd data cannot break the app.
+function fixHabit(h){
+  const name = typeof h.name === "string" ? h.name.trim() : "";
+  if(!name) return null;
+  const days = Array.isArray(h.days)
+    ? h.days.map(Number).filter(n => Number.isInteger(n) && n >= 0 && n <= 6)
+    : [];
+  let category = (typeof h.category === "string" && CATEGORIES.indexOf(h.category) >= 0) ? h.category : null;
+  if(!category){
+    if(h.type === "gym") category = "Gym";
+    else {
+      const match = CATEGORIES.find(c => c.toLowerCase() === name.toLowerCase());
+      if(match) category = match;
+      else if(["drop","gym","book","code"].indexOf(h.icon) >= 0){
+        const byIcon = {drop:"Water",gym:"Gym",book:"Study",code:"Code"}[h.icon];
+        category = byIcon || "Custom";
+      } else category = "Custom";
+    }
+  }
+  if(!category) category = "Custom";
+  return {
+    id: (typeof h.id === "string" && h.id) ? h.id : makeId(),
+    name: name,
+    icon: catIcon(category),
+    category: category,
+    type: catType(category),
+    days: [...new Set(days)].sort((a,b) => a-b),
+    reminder: (typeof h.reminder === "string" && /^\d{2}:\d{2}$/.test(h.reminder)) ? h.reminder : "07:15",
+    createdAt: isDateKey(h.createdAt) ? h.createdAt : todayKey()
+  };
+}
+
+// A short unique id for a new habit.
+function makeId(){ return "h" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+// All the app data sits in this one object.
+let data = loadData();
+
+/* ---------- 2. DATES (always local time, never UTC) ---------- */
+function isDateKey(s){ return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s); }
+
+// "Today" as YYYY-MM-DD.
+// DEV TESTING HELPER ONLY: put ?date=2026-03-01 in the address bar to pretend that is today.
+function todayKey(){
+  try{
+    const q = new URLSearchParams(location.search).get("date");
+    if(isDateKey(q)) return q;
+  }catch(e){}
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+// "YYYY-MM-DD" -> a Date at local midnight.
+function parseKey(key){ const p = key.split("-").map(Number); return new Date(p[0], p[1]-1, p[2]); }
+// a Date -> "YYYY-MM-DD".
+function keyOf(date){ return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`; }
+function addDays(date, n){ const d = new Date(date.getTime()); d.setDate(d.getDate()+n); return d; }
+function yesterdayKey(key){ return keyOf(addDays(parseKey(key), -1)); }
+// Monday = 0 ... Sunday = 6, the same order as the M T W T F S S chips.
+function weekdayOf(key){ return (parseKey(key).getDay() + 6) % 7; }
+// The Monday of the week a date belongs to (used for the gym rest days).
+function weekStart(key){ const d = parseKey(key); d.setDate(d.getDate() - weekdayOf(key)); return keyOf(d); }
+// The day we are currently looking at.
+let currentToday = todayKey();
+
+/* ---------- 3. READING THE LOG ---------- */
+// The habits that are scheduled on a date. Habits created later do not count for earlier days.
+function scheduledOn(key){
+  const wd = weekdayOf(key);
+  return data.habits.filter(h => h.days.indexOf(wd) >= 0 && key >= h.createdAt);
+}
+// The exercise object stored for one gym habit on one day (null when nothing was chosen).
+function dayEntry(key, habitId){
+  const e = (data.log[key] || {})[habitId];
+  return (e && typeof e === "object" && !Array.isArray(e)) ? e : null;
+}
+// The names chosen for one gym habit on one day ([] before anything was chosen).
+function dayExercises(key, habitId){
+  const e = dayEntry(key, habitId);
+  return e ? Object.keys(e) : [];
+}
+// Save the chosen names for one day. Ticks that stay selected are kept from
+// prevEntry; every other name starts unticked. An empty list removes the entry.
+function writeDayExercises(key, habitId, names, prevEntry){
+  if(!data.log[key]) data.log[key] = {};
+  if(!names.length){
+    delete data.log[key][habitId];
+  }else{
+    const entry = {};
+    names.forEach(n => { entry[n] = !!(prevEntry && prevEntry[n] === true); });
+    data.log[key][habitId] = entry;
+  }
+  if(!Object.keys(data.log[key]).length) delete data.log[key];
+}
+// The most recent day strictly before `beforeKey` that has an exercise list
+// for this gym habit, or null when there is none (the button stays hidden).
+function lastWorkoutNames(habitId, beforeKey){
+  const keys = Object.keys(data.log)
+    .filter(k => isDateKey(k) && k < beforeKey).sort().reverse();
+  for(const k of keys){
+    const entry = dayEntry(k, habitId);
+    if(entry && Object.keys(entry).length) return Object.keys(entry);
+  }
+  return null;
+}
+// Is one habit done on one day? A gym habit needs every exercise of THAT
+// DAY'S list ticked; before a list exists it counts as pending (not done).
+function isHabitDone(h, key){
+  if(h.type === "gym"){
+    const entry = dayEntry(key, h.id);
+    if(!entry) return false;
+    const names = Object.keys(entry);
+    return names.length > 0 && names.every(n => entry[n] === true);
+  }
+  return (data.log[key] || {})[h.id] === true;
+}
+// How a day went: how many habits were scheduled and how many are done.
+function dayStatus(key){
+  const list = scheduledOn(key);
+  const done = list.filter(h => isHabitDone(h, key)).length;
+  return { total: list.length, done: done, complete: list.length > 0 && done === list.length };
+}
+
+// Is every habit scheduled today already done?
+function allDoneToday(key){
+  const list = scheduledOn(key);
+  return list.length > 0 && list.every(h => isHabitDone(h, key));
+}
+
+// Write a tick (or an untick) into the log for one day.
+function setDone(h, key, done, exercise){
+  if(!data.log[key]) data.log[key] = {};
+  const day = data.log[key];
+  if(h.type === "gym"){
+    if(!day[h.id] || typeof day[h.id] !== "object") day[h.id] = {};
+    // Keep the key with false so an unticked exercise stays in the day's list.
+    day[h.id][exercise] = done === true;
+    if(!Object.keys(day[h.id]).length) delete day[h.id];
+  }else{
+    if(done) day[h.id] = true; else delete day[h.id];
+  }
+  if(!Object.keys(day).length) delete data.log[key];
+}
+
+// How many days in the log were fully completed (this is the order number).
+function countCompleteDays(){
+  let n = 0;
+  Object.keys(data.log).forEach(key => {
+    if(!isDateKey(key)) return;
+    const st = dayStatus(key);
+    if(st.total > 0 && st.complete) n++;
+  });
+  return n;
+}
+
+/* ---------- 4. STREAKS (always calculated from the log) ---------- */
+// Streak of one habit, simulated FORWARDS from the day it was created up to today.
+// Days the habit is not scheduled are skipped and do not change the streak.
+function computeHabitStreak(h, today){
+  let streak = 0;
+  const misses = {};                 // week -> missed scheduled days in that week (gym rest days)
+  let d = parseKey(h.createdAt);
+  const end = parseKey(today);
+  if(d.getTime() > end.getTime()) return 0;   // habit does not exist yet
+  while(d.getTime() <= end.getTime()){
+    const key = keyOf(d);
+    if(h.days.indexOf(weekdayOf(key)) >= 0){
+      if(isHabitDone(h, key)){
+        streak++;                                     // a completed scheduled day
+      }else if(key !== today){
+        // Today is not finished yet: neither a miss nor a reset, just ignore it.
+        if(h.type === "gym"){
+          const wk = weekStart(key);
+          misses[wk] = (misses[wk] || 0) + 1;
+          if(misses[wk] > 2) streak = 0;             // the third miss in the week resets it
+        }else{
+          streak = 0;                                 // a normal habit: one missed day resets it
+        }
+      }
+    }
+    d = addDays(d, 1);
+  }
+  return streak;
+}
+
+// How many scheduled days of a gym habit were missed in the week of a date,
+// counted from the Monday of that week up to and including the date itself.
+function gymMissesUpTo(h, key){
+  let n = 0;
+  let d = parseKey(weekStart(key));
+  const end = parseKey(key);
+  while(d.getTime() <= end.getTime()){
+    const k = keyOf(d);
+    if(k >= h.createdAt && h.days.indexOf(weekdayOf(k)) >= 0 && !isHabitDone(h, k)) n++;
+    d = addDays(d, 1);
+  }
+  return n;
+}
+
+// Was a day kept? Every habit scheduled on it must be done, except that a gym
+// habit may have missed up to 2 of its scheduled days in that Monday-Sunday week.
+function isDayKept(key){
+  const list = scheduledOn(key);
+  if(!list.length) return false;                       // nothing scheduled: the day is skipped
+  return list.every(h => {
+    if(isHabitDone(h, key)) return true;
+    if(h.type !== "gym") return false;                 // a missed normal habit breaks the day
+    return gymMissesUpTo(h, key) <= 2;                 // a missed gym habit inside its allowance is fine
+  });
+}
+
+// Overall day streak: consecutive days on which every scheduled habit was kept.
+function computeStreak(today){
+  let streak = 0;
+  let d = parseKey(today);
+  for(let i = 0; i < 800; i++){
+    const key = keyOf(d);
+    if(scheduledOn(key).length > 0){
+      if(isDayKept(key)) streak++;
+      else if(key !== today) break; // today is not finished yet: do not break the streak
+    }
+    d = addDays(d, -1);
+  }
+  return streak;
+}
+
+// The first day we know anything about.
+function earliestKnownDate(){
+  let min = null;
+  Object.keys(data.log).forEach(k => { if(isDateKey(k) && (!min || k < min)) min = k; });
+  data.habits.forEach(h => { if(isDateKey(h.createdAt) && (!min || h.createdAt < min)) min = h.createdAt; });
+  return min;
+}
+
+// Longest run of kept days up to (and including) a given date.
+function computeBestStreak(upToKey){
+  const start = earliestKnownDate();
+  if(!start || start > upToKey) return 0;
+  let run = 0, best = 0;
+  let d = parseKey(start);
+  const end = parseKey(upToKey);
+  while(d.getTime() <= end.getTime()){
+    const key = keyOf(d);
+    if(scheduledOn(key).length > 0){
+      if(isDayKept(key)){ run++; if(run > best) best = run; }
+      else run = 0;
+    }
+    d = addDays(d, 1);
+  }
+  return best;
+}
+
+// Gym rest days used in the current week (Monday to Sunday), never more than 2.
+function restDaysUsed(today){
+  const start = parseKey(weekStart(today));
+  const end = addDays(start, 6);
+  let used = 0;
+  data.habits.filter(h => h.type === "gym").forEach(h => {
+    let n = 0;
+    for(let d = new Date(start.getTime()); d <= end; d = addDays(d, 1)){
+      const key = keyOf(d);
+      if(key >= today) break;          // today is still running
+      if(h.days.indexOf(weekdayOf(key)) >= 0 && key >= h.createdAt && !isHabitDone(h, key)) n++;
+    }
+    if(n > used) used = n;             // every gym habit has its own 2 rest days
+  });
+  return Math.min(used, 2);            // a week only ever has 2 rest days
+}
+
+/* ---------- 5. SCREENS ---------- */
+const screens = document.querySelectorAll(".screen"), navHome = $('.nav [data-go="home"]');
+function show(id){
+  screens.forEach(s => s.classList.toggle("on", s.id === id));
+  navHome.classList.toggle("cur", id === "home");
+  if(id === "home") renderHome();
+  scrollTo(0, 0);
+}
+document.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => {
+  playClick(); vibrate(8);
+  if(b.dataset.go === "newHabit") resetForm();   // "+" always opens an empty form
+  if(b.dataset.go === "settings"){ openSettings(); return; }
+  show(b.dataset.go);
+}));
+// Confirm writes the picked names into the target day's list and returns Home.
+$("#confirm").addEventListener("click", () => {
+  if(!pickerTarget){ show("home"); return; }
+  playClick(); vibrate(8);
+  writeDayExercises(pickerTarget.key, pickerTarget.habitId, [...picked], dayEntry(pickerTarget.key, pickerTarget.habitId));
+  pickerTarget = null;
+  saveData();
+  show("home");
+});
+
+/* ---------- 6. THE NEW HABIT FORM ---------- */
+// The habit being edited right now, or null when the form creates a new one.
+let editingId = null;
+// Show (or hide) the red note under the form.
+function formError(msg){
+  $("#formError").hidden = !msg;
+  $("#formErrorText").textContent = msg || "";
+  if(msg){ playError(); vibrate([20,40,20]); }
+}
+
+// Read what is in the form right now.
+function renderCatPicker(){
+  $("#catPicker").innerHTML = CATEGORIES.map(c => `<label class="tile"><input type="radio" name="category" value="${esc(c)}"><svg class="i"><use href="#${catIcon(c)}"/></svg>${esc(c)}</label>`).join("");
+  const first = $("#catPicker input[name=category]"); if(first) first.checked = true;
+}
+function readForm(){
+  const catEl = document.querySelector('input[name="category"]:checked');
+  const category = catEl ? catEl.value : "Custom";
+  const days = [...document.querySelectorAll(".days input[type=checkbox]")]
+    .filter(c => c.checked).map(c => Number(c.dataset.day));
+  return {
+    name: $("#habitName").value.trim(),
+    icon: catIcon(category),
+    category: category,
+    type: catType(category),
+    days: days,
+    reminder: $("#reminder").value || "07:15"
+  };
+}
+
+// Clear the form so it is ready for the next habit.
+function resetForm(){
+  renderCatPicker();
+  $("#habitName").value = "Water";
+  $("#restNote").hidden = true;
+  document.querySelectorAll(".days input[type=checkbox]").forEach(c => c.checked = true);
+  $("#reminder").value = "07:15";
+  picked.clear();                 // the picker selection is reset too
+  group = "Chest";
+  studyGroup = studyGroups[0];
+  $("#search").value = "";
+  editingId = null;               // back to "create" mode
+  $("#habitTitle").textContent = "New habit";
+  $("#saveLabel").textContent = "Save habit";
+  formError("");
+  $("#addReminder").hidden = true;
+  $("#reminderNote").hidden = true;
+  renderGroups(); renderItems(); renderSlip();
+  updateRestNote();
+}
+
+// Fill the form with an existing habit so it can be changed in place.
+function openEdit(h){
+  resetForm();
+  editingId = h.id;
+  const cat = document.querySelector('input[name="category"][value="' + esc(h.category || "Custom") + '"]'); if(cat) cat.checked = true;
+  $("#habitName").value = h.name;
+  document.querySelectorAll(".days input[type=checkbox]").forEach(c => c.checked = h.days.indexOf(Number(c.dataset.day)) >= 0);
+  $("#reminder").value = h.reminder;
+  $("#habitTitle").textContent = "Edit habit";
+  $("#saveLabel").textContent = "Save changes";
+  $("#addReminder").hidden = false;
+  $("#reminderNote").hidden = false;
+  updateRestNote();
+  show("newHabit");
+}
+
+// Save a new habit.
+$("#saveHabit").addEventListener("click", () => {
+  const f = readForm();
+  if(!f.name){ formError("Please enter a habit name."); return; }
+  if(!f.days.length){ formError("Please choose at least one day."); return; }
+  const editing = editingId ? data.habits.find(h => h.id === editingId) : null;
+  if(editing){
+    // Update in place: same id, same createdAt, log history untouched.
+    editing.name = f.name;
+    editing.icon = f.icon;
+    editing.category = f.category;
+    editing.type = f.type;
+    editing.days = f.days;
+    editing.reminder = f.reminder;
+  }else{
+    data.habits.push({
+      id: makeId(),
+      name: f.name,
+      icon: f.icon,
+      type: f.type,
+      days: f.days,
+      reminder: f.reminder,
+      createdAt: todayKey()
+    });
+  }
+  saveData();
+  resetForm();
+  playConfirm(); vibrate(8);
+  show("home");
+});
+function updateRestNote(){
+  const cat = document.querySelector('input[name="category"]:checked');
+  $("#restNote").hidden = !(cat && cat.value === "Gym");
+}
+$("#catPicker").addEventListener("change", e => {
+  const r = e.target.closest('input[name="category"]'); if(!r) return;
+  if(r.value !== "Custom") $("#habitName").value = r.value;
+  else $("#habitName").value = "";
+  updateRestNote();
+});
+$("#newHabit").addEventListener("click", e => {
+  if(e.target.closest(".chip, .tile")){ playClick(); vibrate(8); }
+});
+
+/* ---------- 7. THE GYM EXERCISE PICKER (names only) ---------- */
+const lib = {
+  Chest:["Bench Press","Incline Press","Chest Fly","Push-ups","Cable Crossover","Dips","Decline Bench","Dumbbell Pullover"],
+  Back:["Lat Pulldown","Barbell Row","Seated Row","Pull-ups","Deadlift","Face Pull"],
+  Shoulders:["Shoulder Press","Lateral Raise","Front Raise","Rear Delt Fly","Shrugs","Arnold Press"],
+  Arms:["Barbell Curl","Hammer Curl","Triceps Pushdown","Skull Crusher","Preacher Curl","Dips"],
+  Legs:["Squat","Leg Press","Lunges","Leg Curl","Leg Extension","Calf Raise"],
+  Core:["Plank","Crunches","Leg Raise","Russian Twist","Cable Crunch","Mountain Climbers"],
+  Cardio:["Treadmill","Cycling","Rowing","Skipping Rope","Stair Climber","Elliptical"]
+};
+const studyLib = {
+  "Core subjects":["Mathematics","Physics","Chemistry","Biology","English","Hindi","Social Science","Economics"],
+  "Computer and tech":["Programming","Data Structures and Algorithms","Web Development","Databases","Computer Networks","Operating Systems"],
+  "Exam prep":["Previous year papers","Mock test","Revision","Notes making","Current affairs","Aptitude and reasoning"],
+  "Skills":["Language learning","Book reading","Writing practice","Online course"]
+};
+const picked = new Set();   // the names chosen for the day open in the picker
+let pickerTarget = null;    // which habit + day the picker writes to
+let group = "Chest";        // the muscle group that is open
+
+// The exercises of a group: the built in ones plus the custom ones that were saved.
+function activeLib(){
+  const h = pickerTarget ? data.habits.find(x => x.id === pickerTarget.habitId) : null;
+  return (h && h.category === "Study") ? studyLib : lib;
+}
+function groupItems(g){
+  const L = activeLib();
+  const base = (L[g] || []).slice();
+  const custom = Array.isArray(data.customExercises[g]) ? data.customExercises[g] : [];
+  custom.forEach(n => { if(base.indexOf(n) < 0) base.push(n); });
+  return base;
+}
+function renderGroups(){
+  const L = activeLib();
+  $("#groups").innerHTML = Object.keys(L).map(g =>
+    `<button class="chip dk${g === group ? " sel" : ""}" data-g="${esc(g)}">${esc(g)}</button>`).join("");
+}
+function renderItems(){
+  const q = $("#search").value.trim().toLowerCase();
+  $("#avail").textContent = `[2] Available items (${group})`;
+  $("#items").innerHTML = groupItems(group).filter(n => n.toLowerCase().indexOf(q) >= 0).map(n =>
+    `<label class="chip"><input type="checkbox" value="${esc(n)}"${picked.has(n) ? " checked" : ""}>${esc(n)}</label>`).join("")
+    + `<button class="chip dash" id="addCustom">+ Add custom</button>`;
+}
+function renderSlip(){
+  const list = [...picked];
+  $("#slip").innerHTML = list.map((n, i) =>
+    `<div class="slip"><span>${pad(i + 1)}. ${esc(n.toUpperCase())}</span><i>LOGGED</i></div>`).join("");
+  $("#slipCount").textContent = list.length + " selected";
+  $("#tally").textContent = pad(list.length) + " ITEMS";
+}
+
+// Open the picker for one habit on one day, starting from that day's list.
+function openPicker(habitId, key){
+  pickerTarget = { habitId: habitId, key: key };
+  picked.clear();
+  dayExercises(key, habitId).forEach(n => picked.add(n));
+  const L = (data.habits.find(x=>x.id===habitId)||{}).category === "Study" ? studyLib : lib;
+  group = Object.keys(L)[0];
+  $("#search").value = "";
+  renderGroups(); renderItems(); renderSlip();
+  show("picker");
+}
+$("#groups").addEventListener("click", e => {
+  const b = e.target.closest("[data-g]"); if(!b) return;
+  group = b.dataset.g; renderGroups(); renderItems();
+});
+$("#items").addEventListener("change", e => {
+  e.target.checked ? picked.add(e.target.value) : picked.delete(e.target.value); renderSlip();
+});
+$("#items").addEventListener("click", e => {
+  if(!e.target.closest("#addCustom")) return;
+  const name = (prompt("Exercise name (no sets or reps):") || "").trim();
+  if(!name) return;
+  // Remember the custom exercise so it is still there after a refresh.
+  if(!Array.isArray(data.customExercises[group])) data.customExercises[group] = [];
+  if(data.customExercises[group].indexOf(name) < 0) data.customExercises[group].push(name);
+  saveData();
+  picked.add(name);
+  renderItems(); renderSlip();
+});
+$("#search").addEventListener("input", renderItems);
+renderGroups(); renderItems(); renderSlip();
+
+/* ---------- 8. THE HOME SCREEN ---------- */
+
+// "Thursday, 12 November"
+function formatDay(key){
+  return parseKey(key).toLocaleDateString("en-GB", {weekday:"long", day:"numeric", month:"long"});
+}
+
+// Copy the most recent earlier workout into a day. Exercises that are in both
+// today's entry and the last workout keep their ticks; everything else starts
+// unticked.
+function repeatLastWorkout(habitId, key){
+  const names = lastWorkoutNames(habitId, key);
+  if(!names) return;
+  writeDayExercises(key, habitId, names, dayEntry(key, habitId));
+  saveData();
+  renderHome();
+}
+
+// The card of one habit.
+function habitCard(h, today){
+  const done = isHabitDone(h, today);
+  const streak = computeHabitStreak(h, today);
+  const head = `<div class="hr">
+    <div class="ic"><svg class="i"><use href="#${esc(h.icon)}"/></svg></div>
+    <div class="tx"><div class="hn">${esc(h.name)}</div><div class="hs"><svg class="i" style="width:14px;height:14px"><use href="#flame"/></svg>${streak} day streak</div></div>
+    <button class="del" data-edit="${esc(h.id)}" aria-label="Edit ${esc(h.name)}"><svg class="i"><use href="#pencil"/></svg></button>
+    <button class="del" data-id="${esc(h.id)}" aria-label="Delete ${esc(h.name)}"><svg class="i"><use href="#trash"/></svg></button>
+    ${h.type === "gym" ? "" : `<input class="check" type="checkbox" data-h="${esc(h.id)}" aria-label="${esc(h.name)}"${done ? " checked" : ""}>`}
+  </div>`;
+  if(h.type !== "gym") return `<article class="card habit${done ? " ok" : ""}">${head}</article>`;
+  const entry = dayEntry(today, h.id) || {};
+  const names = dayExercises(today, h.id);
+  // "Repeat last workout" is only offered when an earlier list exists.
+  const repeatBtn = lastWorkoutNames(h.id, today)
+    ? `<button class="btn sm" data-act="repeat" data-id="${esc(h.id)}">Repeat last workout</button>` : "";
+  const pickerBtn = label => `<button class="btn sm" data-act="choose" data-id="${esc(h.id)}">${label}</button>`;
+  if(!names.length){
+    // Nothing chosen for today yet: the picker replaces the checklist.
+    return `<article class="card habit${done ? " ok" : ""}">${head}
+      <div class="acts">${pickerBtn("Choose today’s exercises")}${repeatBtn}</div>
+    </article>`;
+  }
+  const ticked = names.filter(ex => entry[ex] === true).length;
+  const rows = names.map(ex =>
+    `<label class="ex"><span class="nm">${esc(ex)}</span><input class="check" type="checkbox" data-h="${esc(h.id)}" data-ex="${esc(ex)}"${entry[ex] === true ? " checked" : ""}></label>`).join("");
+  const routine = `<div class="routine">
+    <div class="rh up"><span>Routine checklist</span><span>${ticked}/${names.length} active</span></div>
+    ${rows}
+  </div>
+  <div class="acts">${pickerBtn("Edit today’s exercises")}${repeatBtn}</div>`;
+  return `<article class="card habit${done ? " ok" : ""}">${head}${routine}</article>`;
+}
+
+// The message when there is nothing to show.
+function emptyState(){
+  if(!data.habits.length)
+    return `<div class="card" style="text-align:center"><b class="up">No habits yet.</b>` +
+           `<button class="btn" data-go="newHabit" style="margin-top:14px">Add your first habit</button></div>`;
+  return `<div class="card" style="text-align:center"><b class="up">Nothing scheduled for today.</b></div>`;
+}
+
+// Draw the home screen from the saved data.
+function renderHome(){
+  const today = todayKey();
+  currentToday = today;
+  const list = scheduledOn(today);
+  const total = list.length;
+  const done = list.filter(h => isHabitDone(h, today)).length;
+  const pct = total ? Math.round(done / total * 100) : 0;
+
+  // Today's date and the running order number.
+  $("#todayDate").textContent = formatDay(today);
+  $("#orderNo").textContent = "Order #" + String(countCompleteDays()).padStart(4, "0");
+
+  // The ring and the summary.
+  $("#ringBar").style.strokeDashoffset = 238.8 * (1 - (total ? done / total : 0));
+  $("#pctText").textContent = pct + "%";
+  $("#fracText").textContent = done + "/" + total;
+  $("#doneText").textContent = done + " of " + total + " done";
+  $("#ring").setAttribute("aria-label", pct + " percent complete");
+  $("#manifest").textContent = "Daily manifest (" + total + " items)";
+  $("#pending").textContent = (total - done) + " PENDING";
+
+  // Streaks.
+  const best = computeBestStreak(today);
+  $("#bestStreak").textContent = best + (best === 1 ? " day" : " days");
+  $("#restTag").textContent = "Rest days used: " + restDaysUsed(today) + " of 2";
+
+  // The habit list.
+  $("#habitList").innerHTML = list.length ? list.map(h => habitCard(h, today)).join("") : emptyState();
+
+  // The bill button appears as soon as the whole day is done. Opening the bill
+  // itself happens in the checkbox handler below, when the last habit is ticked.
+  $("#billBtn").hidden = !(total > 0 && done === total);
+}
+
+// Put the keyboard focus back on the checkbox that was just redrawn.
+function focusCheckbox(habitId, exercise){
+  const boxes = document.querySelectorAll("#habitList input.check");
+  for(const b of boxes){
+    if(b.dataset.h === habitId && (exercise === undefined || b.dataset.ex === exercise)) b.focus();
+  }
+}
+
+// A tick is saved straight away.
+$("#habitList").addEventListener("change", e => {
+  const box = e.target.closest("input.check");
+  if(!box) return;
+  const habitId = box.dataset.h, exercise = box.dataset.ex;
+  const h = data.habits.find(x => x.id === habitId);
+  if(!h) return;
+  const today = todayKey();
+  const doneBefore = allDoneToday(today);            // was the whole day already done?
+  if(h.type === "gym") setDone(h, today, box.checked, exercise);
+  else setDone(h, today, box.checked);
+  playTick(box.checked);
+  vibrate(15);
+  saveData();
+  renderHome();
+  focusCheckbox(habitId, exercise);                  // keep keyboard focus where it was
+  // The bill opens only when THIS tick finished the day.
+  if(!doneBefore && allDoneToday(today)){
+    vibrate([30,40,30]);
+    setTimeout(openBill, 600);
+  }
+});
+
+// Clicks inside the habit list. The empty-state button is drawn later by
+// renderHome(), so the page-load data-go handlers never see it: it is picked
+// up here by delegation instead.
+$("#habitList").addEventListener("click", e => {
+  const go = e.target.closest("[data-go]");
+  if(go){
+    if(go.dataset.go === "newHabit") resetForm();   // the empty-state button too
+    show(go.dataset.go);
+    return;
+  }
+  // Edit a habit: reuse the New Habit form, pre-filled.
+  const editBtn = e.target.closest("[data-edit]");
+  if(editBtn){
+    const h = data.habits.find(x => x.id === editBtn.dataset.edit);
+    if(h){ openEdit(h); playClick(); vibrate(8); }
+    return;
+  }
+  // Gym card actions: open the picker for today, or copy the last workout.
+  const act = e.target.closest("[data-act]");
+  if(act){
+    playClick(); vibrate(8);
+    if(act.dataset.act === "choose") openPicker(act.dataset.id, todayKey());
+    else if(act.dataset.act === "repeat") repeatLastWorkout(act.dataset.id, todayKey());
+    return;
+  }
+  // Delete a habit. Old log entries are left alone, they are harmless.
+  const btn = e.target.closest(".del");
+  if(!btn) return;
+  const h = data.habits.find(x => x.id === btn.dataset.id);
+  if(!h) return;
+  if(!confirm('Delete "' + h.name + '"?')) return;
+  playDelete(); vibrate(40);
+  data.habits = data.habits.filter(x => x.id !== h.id);
+  saveData();
+  renderHome();
+});
+
+/* ---------- 9. TODAY'S BILL ---------- */
+function buildReceipt(){
+  const today = todayKey();
+  const list = scheduledOn(today);
+  const done = list.filter(h => isHabitDone(h, today)).length;
+  const streak = computeStreak(today);
+  const best = computeBestStreak(today);
+  const bestBefore = computeBestStreak(yesterdayKey(today));
+  const rest = restDaysUsed(today);
+  const d = parseKey(today);
+  const now = new Date();
+  const when = (d.toLocaleDateString("en-GB", {weekday:"short", day:"2-digit", month:"short", year:"numeric"}) + " " +
+                pad(now.getHours()) + ":" + pad(now.getMinutes())).toUpperCase();
+
+  let items = "";
+  list.forEach(h => {
+    const tick = isHabitDone(h, today) ? "✓" : " ";
+    let line = esc(h.name);
+    if(h.type === "gym"){
+      const names = dayExercises(today, h.id);
+      if(names.length) line += " — " + names.join(", ");
+    }
+    items += `<div class="ri"><span>${tick} ${line}</span></div>`;
+  });
+
+  let zig = "0,0"; for (let i = 0; i < 20; i++) zig += ` ${i*5+2.5},10 ${i*5+5},0`;
+  const code = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
+  return `<div class="paper">
+    <div class="rc rt">PUNCHOUT</div>
+    <div class="rc">${when.split(" ").slice(0,3).join(" ")}</div>
+    <hr class="dash">
+    ${items}
+    <hr class="dash">
+    <div class="ri tt"><span>${done} of ${list.length} done</span><span>${streak}${dayWord(streak)} streak</span></div>
+    <div class="rc" style="margin-top:8px">See you tomorrow.</div>
+    <svg class="zig" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true"><polygon points="${zig}"/></svg>
+  </div>`;
+}
+function openBill(){
+  $("#paperWin").innerHTML = buildReceipt();     // rebuilding restarts the print animation
+  $("#bill").classList.add("open");
+  $("#printer").classList.add("printing");
+  setTimeout(() => $("#printer").classList.remove("printing"), 3300);
+  document.body.style.overflow = "hidden";
+  $("#billClose").focus({preventScroll:true});
+  startBillSounds();
+}
+function closeBill(){
+  $("#bill").classList.remove("open");
+  document.body.style.overflow = "";
+  stopBillSounds();
+}
+
+$("#billBtn").addEventListener("click", openBill);
+$("#billClose").addEventListener("click", closeBill);
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") {
+    if(!$("#settingsPanel").hidden){ closeSettings(); return; }
+    closeBill();
+  }
+});
+
+/* ---------- 11. SOUND & VIBRATION ---------- */
+
+const SETTINGS_KEY = "punchout.settings.v1";
+let settings = { sound: true, vibration: true };
+
+function loadSettings(){
+  try{
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if(raw){
+      const p = JSON.parse(raw);
+      if(p && typeof p === "object"){
+        settings.sound = p.sound !== false;
+        settings.vibration = p.vibration !== false;
+      }
+    }
+  }catch(e){
+    settings = { sound: true, vibration: true };
+  }
+}
+function saveSettings(){
+  try{ localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }
+  catch(e){}
+}
+
+let audioCtx = null;
+let masterGain = null;
+let billSounds = [];
+
+function audioReady(){
+  if(audioCtx && masterGain) return true;
+  try{
+    const Ctor = window.AudioContext || window.webkitAudioContext;
+    if(!Ctor) return false;
+    audioCtx = new Ctor();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.15;
+    masterGain.connect(audioCtx.destination);
+  }catch(e){
+    audioCtx = null; masterGain = null;
+  }
+  return !!audioCtx;
+}
+function resumeAudio(){
+  try{
+    if(audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+  }catch(e){}
+}
+function vibrate(pattern){
+  if(!settings.vibration) return;
+  try{
+    const nav = window && window.navigator;
+    if(nav && nav.vibrate) nav.vibrate(pattern);
+  }catch(e){}
+}
+function playTone(freq, type, dur, gainVol){
+  if(!settings.sound || !audioReady()) return;
+  try{
+    const t = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(gainVol, t);
+    g.gain.linearRampToValueAtTime(0, t + dur);
+    osc.connect(g);
+    g.connect(masterGain);
+    osc.start(t);
+    osc.stop(t + dur);
+  }catch(e){}
+}
+function playNoise(dur, gainVol){
+  if(!settings.sound || !audioReady()) return;
+  try{
+    const t = audioCtx.currentTime;
+    const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * dur, audioCtx.sampleRate);
+    const d = buf.getChannelData(0);
+    for(let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.5;
+    const b = audioCtx.createBufferSource();
+    const g = audioCtx.createGain();
+    b.buffer = buf;
+    b.connect(g);
+    g.gain.setValueAtTime(gainVol, t);
+    g.gain.linearRampToValueAtTime(0, t + dur);
+    g.connect(masterGain);
+    b.start(t);
+    b.stop(t + dur);
+  }catch(e){}
+}
+
+function playClick(){
+  if(!settings.sound) return;
+  resumeAudio();
+  playTone(110, "square", 0.05, 0.5);
+}
+function playTick(rising){
+  if(!settings.sound) return;
+  resumeAudio();
+  if(rising){
+    playTone(660, "sine", 0.12, 0.5);
+    setTimeout(() => playTone(990, "sine", 0.12, 0.5), 60);
+  }else{
+    playTone(330, "sine", 0.12, 0.4);
+  }
+}
+function playConfirm(){
+  if(!settings.sound) return;
+  resumeAudio();
+  playTone(520, "sine", 0.15, 0.5);
+  setTimeout(() => playTone(780, "sine", 0.15, 0.5), 90);
+}
+function playDelete(){
+  if(!settings.sound) return;
+  resumeAudio();
+  playTone(90, "sawtooth", 0.25, 0.5);
+}
+function playError(){
+  if(!settings.sound) return;
+  resumeAudio();
+  playTone(120, "square", 0.15, 0.5);
+  setTimeout(() => playTone(90, "square", 0.15, 0.5), 70);
+}
+function playBillStep(){
+  playNoise(0.06, 0.3);
+}
+function playBillDing(){
+  playTone(980, "sine", 0.35, 0.5);
+  setTimeout(() => playTone(1175, "sine", 0.35, 0.5), 120);
+}
+function playBillTear(){
+  playNoise(0.18, 0.35);
+}
+
+function stopBillSounds(){
+  billSounds.forEach(t => clearTimeout(t));
+  billSounds = [];
+}
+function startBillSounds(){
+  stopBillSounds();
+  resumeAudio();
+  const stepMs = 80;
+  const steps = 40;  // 3.2 s / 80 ms
+  let step = 0;
+  function next(){
+    if(step >= steps){
+      playBillDing();
+      playBillTear();
+      vibrate(60);
+      return;
+    }
+    playBillStep();
+    if(step % 2 === 0) vibrate(6);  // a 6 ms pulse about every 160 ms
+    step++;
+    billSounds.push(setTimeout(next, stepMs));
+  }
+  next();
+}
+
+function openSettings(){
+  loadSettings();
+  $("#settingSound").checked = settings.sound;
+  $("#settingVibration").checked = settings.vibration;
+  updateSettingsLabels();
+  // Show Undo last restore whenever a previous copy exists.
+  const prev = localStorage.getItem("habitStore.v1.prev");
+  $("#undoRestore").hidden = !prev;
+  $("#settingsPanel").hidden = false;
+  $("#settingsClose").focus({preventScroll:true});
+  // Scroll back to the top and close collapsible sections when it opens.
+  $("#settingsPanel").scrollTop = 0;
+  document.querySelectorAll("#settingsPanel details").forEach(d => d.removeAttribute("open"));
+}
+function closeSettings(){
+  $("#settingsPanel").hidden = true;
+}
+function updateSettingsLabels(){
+  $("#settingSoundText").textContent = settings.sound ? "ON" : "OFF";
+  $("#settingVibrationText").textContent = settings.vibration ? "ON" : "OFF";
+}
+function settingsLabels(){
+  return { sound: $("#settingSoundText").textContent, vibration: $("#settingVibrationText").textContent };
+}
+$("#settingSound").addEventListener("change", () => {
+  settings.sound = $("#settingSound").checked;
+  saveSettings();
+  updateSettingsLabels();
+  playClick();
+});
+$("#settingVibration").addEventListener("change", () => {
+  settings.vibration = $("#settingVibration").checked;
+  saveSettings();
+  updateSettingsLabels();
+  playClick();
+});
+$("#settingsClose").addEventListener("click", closeSettings);
+$("#settingsDone").addEventListener("click", closeSettings);
+
+/* ---------- 10. CALENDAR REMINDERS (.ics) ---------- */
+
+// Escape text for iCalendar: backslash, semicolon, comma, newline, CR.
+function escIcs(t){
+  return String(t)
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\r");
+}
+
+// Fold a content line at 75 octets (RFC 5545). Splits only on character
+// boundaries so multi-byte UTF-8 characters (Hindi, emoji) are never cut
+// in half. Every physical line, including the leading space on a
+// continuation line, is at most 75 octets.
+function foldLine(text){
+  const enc = new TextEncoder();
+  const lines = [];
+  let buf = "";
+  let bufBytes = 0;
+  let isFirstLine = true;
+  for(const ch of [...text]){
+    const chBytes = enc.encode(ch).length;
+    if(isFirstLine){
+      if(bufBytes + chBytes > 75){
+        lines.push(buf);
+        buf = ch;
+        bufBytes = chBytes;
+        isFirstLine = false;
+      }else{
+        buf += ch;
+        bufBytes += chBytes;
+      }
+    }else{
+      if(1 + bufBytes + chBytes > 75){
+        lines.push(" " + buf);
+        buf = ch;
+        bufBytes = chBytes;
+      }else{
+        buf += ch;
+        bufBytes += chBytes;
+      }
+    }
+  }
+  if(isFirstLine){
+    if(buf) lines.push(buf);
+  }else{
+    if(buf) lines.push(" " + buf);
+  }
+  return lines.join("\r\n");
+}
+
+// A URL-friendly slug for the downloaded file name.
+function slugify(name){
+  return String(name).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "habit";
+}
+
+// The first date on or after `fromKey` on which the habit is scheduled.
+function firstScheduledDay(h, fromKey){
+  let d = parseKey(fromKey);
+  const limit = addDays(d, 60);
+  while(d.getTime() <= limit.getTime()){
+    if(h.days.indexOf(weekdayOf(keyOf(d))) >= 0) return keyOf(d);
+    d = addDays(d, 1);
+  }
+  return fromKey;
+}
+
+// Current time in UTC as YYYYMMDDTHHMMSSZ (for DTSTAMP).
+function nowUtcStamp(){
+  const d = new Date();
+  return pad(d.getUTCFullYear()) + pad(d.getUTCMonth()+1) + pad(d.getUTCDate()) + "T" +
+         pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + pad(d.getUTCSeconds()) + "Z";
+}
+
+// Build a valid iCalendar 2.0 string (CRLF line endings, 75-octet folding)
+// with one VEVENT per habit plus a PT0M DISPLAY alarm on each.
+function buildIcs(habits){
+  const lines = [];
+  lines.push("BEGIN:VCALENDAR");
+  lines.push("VERSION:2.0");
+  lines.push("PRODID:-//Punchout//EN");
+  lines.push("CALSCALE:GREGORIAN");
+  const calUrl = (location.origin || "") + (location.pathname || "");
+  habits.forEach(h => {
+    const stamp = nowUtcStamp();
+    const sequence = Math.floor(Date.now()/60000);
+    lines.push("BEGIN:VEVENT");
+    lines.push("UID:" + escIcs(h.id) + "@punchout");
+    lines.push("DTSTAMP:" + stamp);
+    lines.push("SEQUENCE:" + sequence);
+    lines.push("SUMMARY:" + escIcs("Punchout: " + h.name));
+    lines.push("DESCRIPTION:" + escIcs("Open Punchout and tick off " + h.name + "."));
+    lines.push("URL:" + escIcs(calUrl));
+    const startKey = firstScheduledDay(h, todayKey());
+    const parts = (h.reminder || "07:15").split(":").map(Number);
+    const hh = parts[0] || 0;
+    const mm = parts[1] || 0;
+    lines.push("DTSTART:" + startKey.replace(/-/g, "") + "T" + pad(hh) + pad(mm) + "00");
+    lines.push("DURATION:PT5M");
+    const dayNames = ["MO","TU","WE","TH","FR","SA","SU"];
+    lines.push("RRULE:FREQ=WEEKLY;BYDAY=" + h.days.map(d => dayNames[d]).join(","));
+    lines.push("BEGIN:VALARM");
+    lines.push("ACTION:DISPLAY");
+    lines.push("TRIGGER:PT0M");
+    lines.push("END:VALARM");
+    lines.push("END:VEVENT");
+  });
+  lines.push("END:VCALENDAR");
+  return lines.map(foldLine).join("\r\n") + "\r\n";
+}
+
+// Download an .ics file from a string.
+function downloadIcs(filename, content){
+  try{
+    const blob = new Blob([content], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }catch(e){
+    // download not supported: nothing to do
+  }
+}
+
+// One habit: open the Edit form reminder download.
+function downloadReminder(habitId){
+  const h = data.habits.find(x => x.id === habitId);
+  if(!h) return;
+  downloadIcs("punchout-" + slugify(h.name) + ".ics", buildIcs([h]));
+}
+
+// All habits: download a combined .ics from the Settings panel.
+function downloadAllReminders(){
+  if(!data.habits.length){
+    $("#noHabitsMsg").hidden = false;
+    $("#reminderNoteAll").hidden = true;
+    return;
+  }
+  $("#noHabitsMsg").hidden = true;
+  $("#reminderNoteAll").hidden = false;
+  downloadIcs("punchout-reminders.ics", buildIcs(data.habits));
+}
+
+$("#addReminder").addEventListener("click", () => {
+  if(!editingId) return;
+  downloadReminder(editingId);
+});
+$("#addAllReminders").addEventListener("click", downloadAllReminders);
+
+/* ---------- 10b. BACKUP & RESTORE ---------- */
+
+// Build the export JSON object.
+function buildExportJSON(){
+  return {
+    app: "punchout",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    data: {
+      habits: data.habits,
+      log: data.log,
+      customExercises: data.customExercises
+    },
+    settings: {
+      sound: settings.sound,
+      vibration: settings.vibration
+    }
+  };
+}
+
+// Download a file from text content.
+function downloadText(filename, text, mimeType){
+  try{
+    const blob = new Blob([text], { type: mimeType + ";charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }catch(e){}
+}
+
+// Export my data: download + copy to clipboard, then show confirmation.
+function exportBackup(){
+  const json = buildExportJSON();
+  const text = JSON.stringify(json, null, 2);
+  const filename = "punchout-backup-" + todayKey() + ".json";
+
+  downloadText(filename, text, "application/json");
+
+  const nav = window && window.navigator;
+  if(nav && nav.clipboard && nav.clipboard.writeText){
+    nav.clipboard.writeText(text).then(
+      () => { $("#exportNote").textContent = "Exported " + filename + " and copied to clipboard."; },
+      () => { $("#exportNote").textContent = "Exported " + filename + ". The clipboard was blocked, so use the downloaded file."; }
+    );
+  }else{
+    $("#exportNote").textContent = "Exported " + filename + ". The clipboard was blocked, so use the downloaded file.";
+  }
+}
+
+// Strictly validate an imported backup object before anything is changed.
+function validateImport(parsed){
+  if(!parsed || typeof parsed !== "object") return { ok: false, msg: "Backup file is not a JSON object." };
+  if(parsed.app !== "punchout") return { ok: false, msg: "Not a Punchout backup file." };
+  if(parsed.version !== 1) return { ok: false, msg: "Unsupported backup version." };
+  if(!parsed.data || typeof parsed.data !== "object") return { ok: false, msg: "Backup is missing the data section." };
+  if(!Array.isArray(parsed.data.habits)) return { ok: false, msg: "Backup is missing the habits list." };
+  if(!parsed.data.log || typeof parsed.data.log !== "object" || Array.isArray(parsed.data.log)) return { ok: false, msg: "Backup is missing the log." };
+  return { ok: true };
+}
+
+// Replace app data with repaired import data, then redraw Home.
+// Sanitises everything: habits via fixHabit, customExercises as trimmed
+// non-empty strings (max 40 chars), log as YYYY-MM-DD keys with boolean
+// values (normal) or name->boolean objects (gym). Drops anything else.
+function applyImport(parsed){
+  const d = parsed.data;
+  const habits = Array.isArray(d.habits)
+    ? d.habits.filter(h => h && typeof h === "object").map(fixHabit).filter(h => h)
+    : [];
+
+  const rawLog = (d.log && typeof d.log === "object" && !Array.isArray(d.log)) ? d.log : {};
+  const log = {};
+  Object.keys(rawLog).forEach(key => {
+    if(!isDateKey(key)) return;
+    const day = rawLog[key];
+    if(!day || typeof day !== "object" || Array.isArray(day)) return;
+    const cleanDay = {};
+    Object.keys(day).forEach(habitId => {
+      const val = day[habitId];
+      if(typeof val === "boolean"){
+        cleanDay[habitId] = val;
+      }else if(val && typeof val === "object" && !Array.isArray(val)){
+        const cleanEntry = {};
+        Object.keys(val).forEach(name => {
+          const v = val[name];
+          if(typeof v === "boolean") cleanEntry[name] = v;
+        });
+        if(Object.keys(cleanEntry).length) cleanDay[habitId] = cleanEntry;
+      }
+    });
+    if(Object.keys(cleanDay).length) log[key] = cleanDay;
+  });
+
+  const rawEx = (d.customExercises && typeof d.customExercises === "object" && !Array.isArray(d.customExercises)) ? d.customExercises : {};
+  const customExercises = {};
+  Object.keys(rawEx).forEach(group => {
+    const arr = rawEx[group];
+    if(!Array.isArray(arr)) return;
+    const clean = [...new Set(arr.filter(n => typeof n === "string")
+      .map(n => n.trim())
+      .filter(n => n.length > 0 && n.length <= 40))];
+    if(clean.length) customExercises[group] = clean;
+  });
+
+  data.habits = habits;
+  data.log = log;
+  data.customExercises = customExercises;
+
+  saveData();
+  renderHome();
+}
+
+// Import from pasted text or a chosen file.
+function handleImportText(text){
+  $("#importNote").textContent = "";
+  let parsed;
+  try{
+    parsed = JSON.parse(text);
+  }catch(e){
+    $("#importNote").textContent = "Invalid JSON: " + esc(e.message);
+    return;
+  }
+  const check = validateImport(parsed);
+  if(!check.ok){
+    $("#importNote").textContent = esc(check.msg);
+    return;
+  }
+  if(!confirm("This replaces all data on this device. Continue?")) return;
+
+  // Save current data as an undo copy before replacing.
+  try{
+    const prevCopy = {
+      app: "punchout",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      data: {
+        habits: data.habits,
+        log: data.log,
+        customExercises: data.customExercises
+      },
+      settings: {
+        sound: settings.sound,
+        vibration: settings.vibration
+      }
+    };
+    localStorage.setItem("habitStore.v1.prev", JSON.stringify(prevCopy));
+    $("#undoRestore").hidden = false;
+  }catch(e){}
+
+  applyImport(parsed);
+  $("#importNote").textContent = "Restore complete. Home redrawn.";
+}
+
+$("#exportBackup").addEventListener("click", exportBackup);
+$("#importFile").addEventListener("change", (e) => {
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => handleImportText(reader.result);
+  reader.readAsText(file);
+});
+$("#importBackup").addEventListener("click", () => {
+  handleImportText($("#importText").value);
+});
+
+// Undo the last restore by restoring the saved previous copy.
+function undoRestore(){
+  const prev = localStorage.getItem("habitStore.v1.prev");
+  if(!prev) return;
+  try{
+    const parsed = JSON.parse(prev);
+    applyImport(parsed);
+    localStorage.removeItem("habitStore.v1.prev");
+    $("#undoRestore").hidden = true;
+    $("#importNote").textContent = "Undone last restore.";
+  }catch(e){
+    $("#importNote").textContent = "Could not undo last restore.";
+  }
+}
+$("#undoRestore").addEventListener("click", undoRestore);
+
+/* ---------- 11. START ---------- */
+// If the app is left open overnight, "today" changes - redraw when we come back.
+function checkNewDay(){
+  const now = todayKey();
+  if(now !== currentToday){ currentToday = now; renderHome(); }
+}
+document.addEventListener("visibilitychange", () => { if(!document.hidden) checkNewDay(); });
+window.addEventListener("focus", checkNewDay);
+
+loadSettings();
+renderHome();
+</script>
+</body>
+</html>

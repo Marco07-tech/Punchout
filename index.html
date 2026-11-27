@@ -212,25 +212,14 @@ button{background:none;border:0;cursor:pointer}
   <div class="lab up"><label for="habitName">Habit name</label><span style="font-weight:500">REQ*</span></div>
   <input class="input" id="habitName" type="text" placeholder="e.g. Read for 30 minutes">
 
-  <div class="lab up">Choose icon</div>
-  <div class="row3" style="display:grid;grid-template-columns:repeat(4,1fr)">
-    <label class="tile"><input type="radio" name="icon" value="drop" checked><svg class="i"><use href="#drop"/></svg>Water</label>
-    <label class="tile"><input type="radio" name="icon" value="gym"><svg class="i"><use href="#gym"/></svg>Gym</label>
-    <label class="tile"><input type="radio" name="icon" value="book"><svg class="i"><use href="#book"/></svg>Study</label>
-    <label class="tile"><input type="radio" name="icon" value="code"><svg class="i"><use href="#code"/></svg>Code</label>
-  </div>
-
-  <div class="lab up">Habit type</div>
-  <div class="row2">
-    <label class="chip"><input type="radio" name="type" value="normal" checked>Normal</label>
-    <label class="chip"><input type="radio" name="type" value="gym">Gym</label>
-  </div>
+  <div class="lab up">Choose category</div>
+  <div class="row3" style="display:grid;grid-template-columns:repeat(4,1fr)" id="catPicker"></div>
 
   <div class="lab up"><span>Select days</span><span style="font-weight:500">Tap to turn on or off</span></div>
   <div class="days">
     <label class="chip"><input type="checkbox" data-day="0" aria-label="Monday" checked>M</label><label class="chip"><input type="checkbox" data-day="1" aria-label="Tuesday" checked>T</label><label class="chip"><input type="checkbox" data-day="2" aria-label="Wednesday" checked>W</label><label class="chip"><input type="checkbox" data-day="3" aria-label="Thursday" checked>T</label><label class="chip"><input type="checkbox" data-day="4" aria-label="Friday" checked>F</label><label class="chip"><input type="checkbox" data-day="5" aria-label="Saturday" checked>S</label><label class="chip"><input type="checkbox" data-day="6" aria-label="Sunday" checked>S</label>
   </div>
-  <div class="note"><svg class="i"><use href="#info"/></svg><span>Gym habits allow a maximum of 2 rest days per week before the streak resets.</span></div>
+  <div class="note" id="restNote" hidden><svg class="i"><use href="#info"/></svg><span>Gym habits allow a maximum of 2 rest days per week before the streak resets.</span></div>
 
   <div class="lab up"><label for="reminder">Reminder time</label></div>
   <input class="input" id="reminder" type="time" value="07:15">
@@ -344,6 +333,10 @@ const pad = n => String(n).padStart(2, "0");
 const dayWord = n => n === 1 ? " DAY" : " DAYS";
 
 /* ---------- 1. THE STORE (load + save) ---------- */
+const CATEGORIES = ["Water","Gym","Study","Code","Wake up early","Sleep on time","Meditation","Yoga","Walking","Reading","Journaling","No sugar","Healthy meal","Vitamins","No social media","Expense tracking","Custom"];
+const CAT_ICON = {Water:"drop",Gym:"gym",Study:"book",Code:"code",Custom:"plus"};
+function catIcon(c){ return CAT_ICON[c] || "info"; }
+function catType(c){ return (c === "Gym" || c === "Study") ? "gym" : "normal"; }
 const STORE_KEY = "habitStore.v1";
 
 function emptyData(){ return { habits: [], log: {}, customExercises: {} }; }
@@ -381,11 +374,25 @@ function fixHabit(h){
   const days = Array.isArray(h.days)
     ? h.days.map(Number).filter(n => Number.isInteger(n) && n >= 0 && n <= 6)
     : [];
+  let category = (typeof h.category === "string" && CATEGORIES.indexOf(h.category) >= 0) ? h.category : null;
+  if(!category){
+    if(h.type === "gym") category = "Gym";
+    else {
+      const match = CATEGORIES.find(c => c.toLowerCase() === name.toLowerCase());
+      if(match) category = match;
+      else if(["drop","gym","book","code"].indexOf(h.icon) >= 0){
+        const byIcon = {drop:"Water",gym:"Gym",book:"Study",code:"Code"}[h.icon];
+        category = byIcon || "Custom";
+      } else category = "Custom";
+    }
+  }
+  if(!category) category = "Custom";
   return {
     id: (typeof h.id === "string" && h.id) ? h.id : makeId(),
     name: name,
-    icon: ["drop","gym","book","code"].indexOf(h.icon) >= 0 ? h.icon : "drop",
-    type: h.type === "gym" ? "gym" : "normal",
+    icon: catIcon(category),
+    category: category,
+    type: catType(category),
     days: [...new Set(days)].sort((a,b) => a-b),
     reminder: (typeof h.reminder === "string" && /^\d{2}:\d{2}$/.test(h.reminder)) ? h.reminder : "07:15",
     createdAt: isDateKey(h.createdAt) ? h.createdAt : todayKey()
@@ -663,15 +670,20 @@ function formError(msg){
 }
 
 // Read what is in the form right now.
+function renderCatPicker(){
+  $("#catPicker").innerHTML = CATEGORIES.map(c => `<label class="tile"><input type="radio" name="category" value="${esc(c)}"><svg class="i"><use href="#${catIcon(c)}"/></svg>${esc(c)}</label>`).join("");
+  const first = $("#catPicker input[name=category]"); if(first) first.checked = true;
+}
 function readForm(){
-  const iconEl = document.querySelector('input[name="icon"]:checked');
-  const typeEl = document.querySelector('input[name="type"]:checked');
+  const catEl = document.querySelector('input[name="category"]:checked');
+  const category = catEl ? catEl.value : "Custom";
   const days = [...document.querySelectorAll(".days input[type=checkbox]")]
     .filter(c => c.checked).map(c => Number(c.dataset.day));
   return {
     name: $("#habitName").value.trim(),
-    icon: iconEl ? iconEl.value : "drop",
-    type: (typeEl && typeEl.value === "gym") ? "gym" : "normal",
+    icon: catIcon(category),
+    category: category,
+    type: catType(category),
     days: days,
     reminder: $("#reminder").value || "07:15"
   };
@@ -679,38 +691,38 @@ function readForm(){
 
 // Clear the form so it is ready for the next habit.
 function resetForm(){
-  $("#habitName").value = "";
-  const icon = document.querySelector('input[name="icon"][value="drop"]'); if(icon) icon.checked = true;
-  const type = document.querySelector('input[name="type"][value="normal"]'); if(type) type.checked = true;
+  renderCatPicker();
+  $("#habitName").value = "Water";
+  $("#restNote").hidden = true;
   document.querySelectorAll(".days input[type=checkbox]").forEach(c => c.checked = true);
   $("#reminder").value = "07:15";
   picked.clear();                 // the picker selection is reset too
   group = "Chest";
+  studyGroup = studyGroups[0];
   $("#search").value = "";
   editingId = null;               // back to "create" mode
-  document.querySelectorAll('input[name="type"]').forEach(r => r.disabled = false);
   $("#habitTitle").textContent = "New habit";
   $("#saveLabel").textContent = "Save habit";
   formError("");
   $("#addReminder").hidden = true;
   $("#reminderNote").hidden = true;
   renderGroups(); renderItems(); renderSlip();
+  updateRestNote();
 }
 
 // Fill the form with an existing habit so it can be changed in place.
 function openEdit(h){
   resetForm();
   editingId = h.id;
+  const cat = document.querySelector('input[name="category"][value="' + esc(h.category || "Custom") + '"]'); if(cat) cat.checked = true;
   $("#habitName").value = h.name;
-  const icon = document.querySelector('input[name="icon"][value="' + esc(h.icon) + '"]'); if(icon) icon.checked = true;
-  const type = document.querySelector('input[name="type"][value="' + esc(h.type) + '"]'); if(type) type.checked = true;
   document.querySelectorAll(".days input[type=checkbox]").forEach(c => c.checked = h.days.indexOf(Number(c.dataset.day)) >= 0);
   $("#reminder").value = h.reminder;
-  document.querySelectorAll('input[name="type"]').forEach(r => r.disabled = true);   // the type cannot change
   $("#habitTitle").textContent = "Edit habit";
   $("#saveLabel").textContent = "Save changes";
   $("#addReminder").hidden = false;
   $("#reminderNote").hidden = false;
+  updateRestNote();
   show("newHabit");
 }
 
@@ -724,8 +736,10 @@ $("#saveHabit").addEventListener("click", () => {
     // Update in place: same id, same createdAt, log history untouched.
     editing.name = f.name;
     editing.icon = f.icon;
+    editing.category = f.category;
+    editing.type = f.type;
     editing.days = f.days;
-    editing.reminder = f.reminder;   // the type never changes while editing
+    editing.reminder = f.reminder;
   }else{
     data.habits.push({
       id: makeId(),
@@ -742,6 +756,16 @@ $("#saveHabit").addEventListener("click", () => {
   playConfirm(); vibrate(8);
   show("home");
 });
+function updateRestNote(){
+  const cat = document.querySelector('input[name="category"]:checked');
+  $("#restNote").hidden = !(cat && cat.value === "Gym");
+}
+$("#catPicker").addEventListener("change", e => {
+  const r = e.target.closest('input[name="category"]'); if(!r) return;
+  if(r.value !== "Custom") $("#habitName").value = r.value;
+  else $("#habitName").value = "";
+  updateRestNote();
+});
 $("#newHabit").addEventListener("click", e => {
   if(e.target.closest(".chip, .tile")){ playClick(); vibrate(8); }
 });
@@ -756,19 +780,31 @@ const lib = {
   Core:["Plank","Crunches","Leg Raise","Russian Twist","Cable Crunch","Mountain Climbers"],
   Cardio:["Treadmill","Cycling","Rowing","Skipping Rope","Stair Climber","Elliptical"]
 };
+const studyLib = {
+  "Core subjects":["Mathematics","Physics","Chemistry","Biology","English","Hindi","Social Science","Economics"],
+  "Computer and tech":["Programming","Data Structures and Algorithms","Web Development","Databases","Computer Networks","Operating Systems"],
+  "Exam prep":["Previous year papers","Mock test","Revision","Notes making","Current affairs","Aptitude and reasoning"],
+  "Skills":["Language learning","Book reading","Writing practice","Online course"]
+};
 const picked = new Set();   // the names chosen for the day open in the picker
 let pickerTarget = null;    // which habit + day the picker writes to
 let group = "Chest";        // the muscle group that is open
 
 // The exercises of a group: the built in ones plus the custom ones that were saved.
+function activeLib(){
+  const h = pickerTarget ? data.habits.find(x => x.id === pickerTarget.habitId) : null;
+  return (h && h.category === "Study") ? studyLib : lib;
+}
 function groupItems(g){
-  const base = (lib[g] || []).slice();
+  const L = activeLib();
+  const base = (L[g] || []).slice();
   const custom = Array.isArray(data.customExercises[g]) ? data.customExercises[g] : [];
   custom.forEach(n => { if(base.indexOf(n) < 0) base.push(n); });
   return base;
 }
 function renderGroups(){
-  $("#groups").innerHTML = Object.keys(lib).map(g =>
+  const L = activeLib();
+  $("#groups").innerHTML = Object.keys(L).map(g =>
     `<button class="chip dk${g === group ? " sel" : ""}" data-g="${esc(g)}">${esc(g)}</button>`).join("");
 }
 function renderItems(){
@@ -791,7 +827,8 @@ function openPicker(habitId, key){
   pickerTarget = { habitId: habitId, key: key };
   picked.clear();
   dayExercises(key, habitId).forEach(n => picked.add(n));
-  group = "Chest";
+  const L = (data.habits.find(x=>x.id===habitId)||{}).category === "Study" ? studyLib : lib;
+  group = Object.keys(L)[0];
   $("#search").value = "";
   renderGroups(); renderItems(); renderSlip();
   show("picker");
@@ -997,33 +1034,25 @@ function buildReceipt(){
 
   let items = "";
   list.forEach(h => {
-    const hs = computeHabitStreak(h, today);
-    items += `<div class="ri"><span>${esc(h.name.toUpperCase())}</span><span>${pad(hs)}${dayWord(hs)}</span></div>`;
+    const tick = isHabitDone(h, today) ? "✓" : " ";
+    let line = esc(h.name);
     if(h.type === "gym"){
-      const entry = dayEntry(today, h.id) || {};
-      dayExercises(today, h.id).forEach(ex => {
-        items += `<div class="ri sub"><span>&gt; ${esc(ex.toUpperCase())}</span><span>${entry[ex] === true ? "DONE" : "PENDING"}</span></div>`;
-      });
-    }else{
-      items += `<div class="ri sub"><span>&gt; REMINDER ${esc(h.reminder)}</span><span>SET</span></div>`;
+      const names = dayExercises(today, h.id);
+      if(names.length) line += " — " + names.join(", ");
     }
+    items += `<div class="ri"><span>${tick} ${line}</span></div>`;
   });
 
   let zig = "0,0"; for (let i = 0; i < 20; i++) zig += ` ${i*5+2.5},10 ${i*5+5},0`;
-  const code = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${list.length}-${streak}`;
+  const code = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
   return `<div class="paper">
     <div class="rc rt">PUNCHOUT</div>
-    <div class="rc">STORE #402 - REG 01</div><div class="rc">${when}</div>
-    <hr class="dash"><div class="ri hd"><span>ITEM</span><span>STREAK</span></div><hr class="dash">
+    <div class="rc">${when.split(" ").slice(0,3).join(" ")}</div>
+    <hr class="dash">
     ${items}
-    <hr class="dbl">
-    <div class="ri tt"><span>HABITS DONE:</span><span>${done}/${list.length}</span></div>
-    <div class="ri tt"><span>DAY STREAK:</span><span>${streak}${dayWord(streak)}</span></div>
-    <div class="ri"><span>BEST STREAK:</span><span>${best}${dayWord(best)}</span></div>
-    <div class="ri"><span>REST DAYS (WEEK):</span><span>${rest}/2</span></div>
-    ${streak > bestBefore ? '<div class="best">*** NEW PERSONAL BEST ***</div>' : ""}
-    <div class="barcode" aria-hidden="true"></div><div class="rc">*${code}*</div>
-    <hr class="dash"><div class="rc tt" style="font-weight:700">THANK YOU. SEE YOU TOMORROW.</div>
+    <hr class="dash">
+    <div class="ri tt"><span>${done} of ${list.length} done</span><span>${streak}${dayWord(streak)} streak</span></div>
+    <div class="rc" style="margin-top:8px">See you tomorrow.</div>
     <svg class="zig" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true"><polygon points="${zig}"/></svg>
   </div>`;
 }
@@ -1218,6 +1247,9 @@ function openSettings(){
   $("#undoRestore").hidden = !prev;
   $("#settingsPanel").hidden = false;
   $("#settingsClose").focus({preventScroll:true});
+  // Scroll back to the top and close collapsible sections when it opens.
+  $("#settingsPanel").scrollTop = 0;
+  document.querySelectorAll("#settingsPanel details").forEach(d => d.removeAttribute("open"));
 }
 function closeSettings(){
   $("#settingsPanel").hidden = true;
