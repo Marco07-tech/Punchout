@@ -111,10 +111,10 @@ button{background:none;border:0;cursor:pointer}
 .pr{max-width:350px;margin:0 auto}
 .pb{position:relative;z-index:2;height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;background:var(--blue);border:3px solid var(--ink);box-shadow:0 0 0 3px var(--paper)}
 .pb i{width:10px;height:10px;background:var(--ink)}
-.pr.printing .pb i{animation:blink .35s steps(2) infinite}
+.pr.printing .pb i{animation:blink .21s steps(2) infinite}
 .slot{position:absolute;left:14px;right:14px;bottom:8px;height:8px;background:var(--ink)}
 .pw{position:relative;z-index:1;margin:-6px 14px 0;padding-bottom:14px;overflow:hidden}
-.paper{position:relative;padding:22px 16px;background:var(--w);color:var(--ink);border:3px solid var(--ink);border-bottom:0;font:400 12px/1.6 var(--mono);animation:print 3.2s steps(40,end) both}
+.paper{position:relative;padding:22px 16px;background:var(--w);color:var(--ink);border:3px solid var(--ink);border-bottom:0;font:400 12px/1.6 var(--mono);animation:print 1.92s steps(40,end) both}
 .zig{position:absolute;left:-3px;right:-3px;top:calc(100% - 1px);width:calc(100% + 6px);height:11px}
 .zig polygon{fill:var(--w);stroke:var(--ink);stroke-width:3;vector-effect:non-scaling-stroke}
 .rc{text-align:center}.rt{font-weight:700;font-size:15px;letter-spacing:.1em}
@@ -125,7 +125,7 @@ button{background:none;border:0;cursor:pointer}
 .dbl{border:0;border-top:4px double var(--ink);margin:10px 0}
 .best{margin:12px 0;padding:8px;text-align:center;font-weight:700;background:var(--blue);border:3px solid var(--ink);box-shadow:4px 4px 0 var(--ink)}
 .barcode{height:46px;margin:12px 0 4px;background:repeating-linear-gradient(90deg,var(--ink) 0 2px,transparent 2px 4px,var(--ink) 4px 5px,transparent 5px 8px,var(--ink) 8px 11px,transparent 11px 13px)}
-.bill .btn{margin-top:26px;animation:fade .4s 3.3s both}
+.bill .btn{margin-top:26px;animation:fade .4s 1.98s both}
 @keyframes print{from{transform:translateY(-100%)}}
 @keyframes blink{50%{opacity:.2}}
 @keyframes fade{from{opacity:0}}
@@ -333,7 +333,7 @@ const pad = n => String(n).padStart(2, "0");
 const dayWord = n => n === 1 ? " DAY" : " DAYS";
 
 /* ---------- 1. THE STORE (load + save) ---------- */
-const CATEGORIES = ["Water","Gym","Study","Code","Wake up early","Sleep on time","Meditation","Yoga","Walking","Reading","Journaling","No sugar","Healthy meal","Vitamins","No social media","Expense tracking","Custom"];
+const CATEGORIES = ["Water","Gym","Study","Code","Break from screen","No social media","Custom"];
 const CAT_ICON = {Water:"drop",Gym:"gym",Study:"book",Code:"code",Custom:"plus"};
 function catIcon(c){ return CAT_ICON[c] || "info"; }
 function catType(c){ return c === "Gym" ? "gym" : (c === "Study" ? "items" : "normal"); }
@@ -694,7 +694,7 @@ function resetForm(){
   renderCatPicker();
   $("#habitName").value = "Water";
   $("#restNote").hidden = true;
-  document.querySelectorAll(".days input[type=checkbox]").forEach(c => c.checked = true);
+  document.querySelectorAll(".days input[type=checkbox]").forEach(c => c.checked = false);
   $("#reminder").value = "07:15";
   picked.clear();                 // the picker selection is reset too
   group = "Chest";
@@ -1070,7 +1070,7 @@ function openBill(){
   $("#paperWin").innerHTML = buildReceipt();     // rebuilding restarts the print animation
   $("#bill").classList.add("open");
   $("#printer").classList.add("printing");
-  setTimeout(() => $("#printer").classList.remove("printing"), 3300);
+  setTimeout(() => $("#printer").classList.remove("printing"), 1980);
   document.body.style.overflow = "hidden";
   $("#billClose").focus({preventScroll:true});
   startBillSounds();
