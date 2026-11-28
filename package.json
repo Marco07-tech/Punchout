@@ -1,0 +1,30 @@
+{
+  "name": "punchout",
+  "version": "1.0.0",
+  "description": "Punchout - habit tracking app",
+  "main": "test-streaks.js",
+  "scripts": {
+  "sync-web": "node -e \"require('fs').copyFileSync('index.html','www/index.html')\"",
+    "test": "node test-streaks.js",
+    "copy-web": "if not exist www mkdir www && copy /y index.html www\\index.html",
+    "build:android": "cd android && gradlew assembleDebug"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Marco07-tech/Punchout.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Marco07-tech/Punchout/issues"
+  },
+  "homepage": "https://github.com/Marco07-tech/Punchout#readme",
+  "devDependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/cli": "^8.6.2",
+    "@capacitor/core": "^8.6.2",
+    "playwright": "^1.65.1"
+  }
+}

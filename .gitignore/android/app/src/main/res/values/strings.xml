@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Punchout</string>
+    <string name="title_activity_main">Punchout</string>
+    <string name="package_name">com.punchout.app</string>
+    <string name="custom_url_scheme">com.punchout.app</string>
+</resources>
