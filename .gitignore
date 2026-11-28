@@ -1,0 +1,6 @@
+node_modules/
+diag.js
+*.apk
+*.aab
+.idea/
+
