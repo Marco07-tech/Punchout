@@ -790,6 +790,9 @@ $("#saveHabit").addEventListener("click", () => {
       type: f.type,
       days: f.days,
       reminder: f.reminder,
+      category: f.category,
+      icon: f.icon,
+      type: f.type,
       intervalNum: f.intervalNum, intervalUnit: f.intervalUnit,
       windowFrom: f.windowFrom, windowTo: f.windowTo,
       createdAt: todayKey()
@@ -829,19 +832,24 @@ function computeNextSlots(habit, now){
 }
 let firedSlots = new Set();
 function reminderTick(){
-  const now = new Date(), key = keyOf(now);
-  data.habits.filter(isIntervalCat).forEach(h => {
+  const now = new Date(), key = keyOf(now), nowMin = now.getHours()*60+now.getMinutes();
+  data.habits.filter(h => isIntervalCat(h.category)).forEach(h => {
     if(isHabitDone(h,key)) return;
-    computeNextSlots(h,now).forEach(slot => {
-      const id = h.id+"-"+slot;
-      if(firedSlots.has(id)) return;
-      if(slot.slice(11) > pad(now.getHours())+":"+pad(now.getMinutes())) return;
-      firedSlots.add(id);
-      if(window.Notification && Notification.permission==="granted") new Notification(h.name);
-      $("#banner").hidden = false; $("#banner").textContent = h.name+" reminder";
-      playConfirm(); vibrate(15);
-      setTimeout(()=>{ $("#banner").hidden = true; }, 4000);
-    });
+    const slots = computeNextSlots(h,now);
+    const due = slots.filter(s => { const [hh,mm]=s.slice(11).split(":").map(Number); return (hh*60+mm) <= nowMin; });
+    // mark older due slots as fired silently
+    due.slice(0,-1).forEach(s => firedSlots.add(h.id+"-"+s));
+    const last = due[due.length-1];
+    if(!last) return;
+    const [hh,mm]=last.slice(11).split(":").map(Number);
+    if(nowMin - (hh*60+mm) > 5) { firedSlots.add(h.id+"-"+last); return; }
+    const id = h.id+"-"+last;
+    if(firedSlots.has(id)) return;
+    firedSlots.add(id);
+    if(window.Notification && Notification.permission==="granted") new Notification(h.name);
+    $("#banner").hidden = false; $("#banner").textContent = h.name+" reminder";
+    playConfirm(); vibrate(15);
+    setTimeout(()=>{ $("#banner").hidden = true; }, 4000);
   });
 }
 setInterval(reminderTick, 30000);
