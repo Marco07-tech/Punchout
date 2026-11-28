@@ -6,7 +6,8 @@
 <title>Punchout</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"></noscript>
 <style>
 /* ===== TOKENS (from the Stitch design system) ===== */
 :root{--ink:#3B2418;--paper:#F2E8DA;--blue:#8EC5FF;--w:#fff;
@@ -14,7 +15,7 @@
 *{box-sizing:border-box;margin:0;padding:0;border-radius:0}
 [hidden]{display:none!important}
 body{background:var(--paper);color:var(--ink);font:500 15px/1.4 var(--sans)}
-button,input{font:inherit;color:inherit}
+button,input,select{font:inherit;color:inherit}
 button{background:none;border:0;cursor:pointer}
 :focus-visible{outline:3px solid var(--ink);outline-offset:3px}
 .app{max-width:430px;margin:0 auto;min-height:100vh;padding:0 16px 130px}
@@ -27,10 +28,10 @@ button{background:none;border:0;cursor:pointer}
 .top{display:flex;align-items:center;gap:12px;margin:0 -16px 16px;padding:14px 16px;border-bottom:6px solid var(--ink)}
 .top .t{flex:1;min-width:0}
 .top small{display:block;font-size:11px}
-.top b{font-size:24px;letter-spacing:-.02em;text-transform:uppercase;line-height:1.1}
+.top b,.top h1{font-size:24px;letter-spacing:-.02em;text-transform:uppercase;line-height:1.1;font-weight:700}
 .sq{width:44px;height:44px;display:grid;place-items:center;flex-shrink:0;background:var(--w);border:3px solid var(--ink);box-shadow:3px 3px 0 var(--ink)}
 .sq.dk{background:var(--ink);color:var(--paper)}
-.btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:16px;background:var(--blue);border:3px solid var(--ink);box-shadow:4px 4px 0 var(--ink);font-weight:700;font-size:18px;text-transform:uppercase}
+.btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:16px;background:var(--blue);color:var(--ink);border:3px solid var(--ink);box-shadow:4px 4px 0 var(--ink);font-weight:700;font-size:18px;text-transform:uppercase}
 .btn.sm{width:auto;margin-top:12px;padding:8px 12px;font-size:13px}
 .card{background:var(--w);border:3px solid var(--ink);box-shadow:6px 6px 0 var(--ink);padding:16px}
 .tag{display:inline-block;margin-top:8px;padding:4px 8px;background:var(--blue);color:var(--ink);border:2px solid var(--ink);font-size:12px}
@@ -130,7 +131,7 @@ button{background:none;border:0;cursor:pointer}
 @keyframes blink{50%{opacity:.2}}
 @keyframes fade{from{opacity:0}}
 
-@media (prefers-reduced-motion: reduce){ .paper{animation-duration:.4s} }
+@media (prefers-reduced-motion: reduce){ .paper{animation-duration:.01s} .bill .btn{animation-delay:0s;animation-duration:.01s} .pr.printing .pb i{animation:none} }
 .banner{position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:80;max-width:430px;width:100%;padding:12px 16px;background:var(--blue);border-bottom:3px solid var(--ink);text-align:center;font-weight:700}
 
 /* Settings panel overlay */
@@ -172,13 +173,13 @@ button{background:none;border:0;cursor:pointer}
 <symbol id="pencil" viewBox="0 0 24 24"><path d="M4 20h4L20 8l-4-4L4 16v4zM14 6l4 4"/></symbol>
 </svg>
 
-<div class="banner" id="banner" hidden></div>
+<div class="banner" id="banner" role="status" aria-live="polite" hidden></div>
 <div class="app">
 
 <!-- ================= HOME ================= -->
 <main class="screen on" id="home">
   <header class="top">
-    <div class="t"><small class="up">Punchout</small><b>Today</b></div>
+    <div class="t"><small class="up">Punchout</small><h1>Today</h1></div>
     <button class="sq dk" data-go="settings" aria-label="Settings"><svg class="i"><use href="#user"/></svg></button>
   </header>
 
@@ -209,7 +210,7 @@ button{background:none;border:0;cursor:pointer}
 <main class="screen" id="stats">
   <header class="top">
     <button class="sq" data-go="home" aria-label="Back"><svg class="i"><use href="#back"/></svg></button>
-    <div class="t"><small class="up">Punchout</small><b>Stats</b></div>
+    <div class="t"><small class="up">Punchout</small><h1>Stats</h1></div>
   </header>
   <div id="statsBody"></div>
 </main>
@@ -218,7 +219,7 @@ button{background:none;border:0;cursor:pointer}
 <main class="screen" id="newHabit">
   <header class="top">
     <button class="sq" data-go="home" aria-label="Back"><svg class="i"><use href="#back"/></svg></button>
-    <div class="t"><small class="up">Punchout</small><b id="habitTitle">New habit</b></div>
+    <div class="t"><small class="up">Punchout</small><h1 id="habitTitle">New habit</h1></div>
   </header>
   <div class="row2" style="align-items:center;font-size:12px"><span class="up">Item registration // Mod. 0042</span><span class="tag up" style="margin:0;justify-self:end;background:#EADFCC">Status: new entry</span></div>
 
@@ -241,8 +242,8 @@ button{background:none;border:0;cursor:pointer}
   </div>
   <div id="reminderInterval" hidden>
     <div class="lab up">Remind me every</div>
-    <div class="row2"><input class="input" id="intervalNum" type="number" min="15" value="1"><select class="input" id="intervalUnit"><option value="minutes">minutes</option><option value="hours" selected>hours</option></select></div>
-    <div class="lab up">From <input class="input" id="windowFrom" type="time" value="09:00" style="width:auto;display:inline-block"> to <input class="input" id="windowTo" type="time" value="21:00" style="width:auto;display:inline-block"></div>
+    <div class="row2"><input class="input" id="intervalNum" type="number" min="15" value="1" aria-label="Interval amount"><select class="input" id="intervalUnit" aria-label="Interval unit"><option value="minutes">minutes</option><option value="hours" selected>hours</option></select></div>
+    <div class="lab up">From <input class="input" id="windowFrom" type="time" value="09:00" aria-label="Reminder start time" style="width:auto;display:inline-block"> to <input class="input" id="windowTo" type="time" value="21:00" aria-label="Reminder end time" style="width:auto;display:inline-block"></div>
     <p class="foot up">Reminders work while Punchout is open</p>
   </div>
 
@@ -258,8 +259,8 @@ button{background:none;border:0;cursor:pointer}
 <main class="screen" id="picker">
   <header class="top">
     <button class="sq" data-go="home" aria-label="Back"><svg class="i"><use href="#back"/></svg></button>
-    <div class="t"><small class="up">Punchout</small><b>Select exercises</b></div>
-    <span class="sq" style="background:var(--blue)"><svg class="i"><use href="#gym"/></svg></span>
+    <div class="t"><small class="up">Punchout</small><h1>Select exercises</h1></div>
+    <span class="sq" style="background:var(--blue)"><svg class="i"><use id="pickerIcon" href="#gym"/></svg></span>
   </header>
 
   <div class="card" style="box-shadow:4px 4px 0 var(--ink)">
@@ -267,7 +268,7 @@ button{background:none;border:0;cursor:pointer}
     <p class="mono" style="font-size:12px;margin-top:4px">Items register to your daily checklist upon checkout.</p>
   </div>
 
-  <div class="lab up"><span>[1] Department / muscle group</span></div>
+  <div class="lab up"><span id="pickerGroupLabel">[1] Department / muscle group</span></div>
   <div class="row3" id="groups"></div>
 
   <input class="input" id="search" type="search" placeholder="Search exercises..." aria-label="Search exercises" style="margin-top:18px">
@@ -282,8 +283,8 @@ button{background:none;border:0;cursor:pointer}
     <div class="tally"><span>TOTAL ITEM TALLY:</span><span id="tally">00 ITEMS</span></div>
   </section>
 
-  <button class="btn" id="confirm" style="margin-top:24px">Confirm exercises <svg class="i"><use href="#back" style="transform:scaleX(-1);transform-origin:center"/></svg></button>
-  <p class="foot up">*** Store policy: no sets / reps logged here ***</p>
+  <button class="btn" id="confirm" style="margin-top:24px"><span id="confirmLabel">Confirm exercises</span> <svg class="i"><use href="#back" style="transform:scaleX(-1);transform-origin:center"/></svg></button>
+  <p class="foot up" id="pickerPolicy">*** Store policy: no sets / reps logged here ***</p>
 </main>
 
 </div>
@@ -399,6 +400,7 @@ function fixHabit(h){
   let category = (typeof h.category === "string" && CATEGORIES.indexOf(h.category) >= 0) ? h.category : null;
   if(!category){
     if(h.type === "gym") category = "Gym";
+    else if(h.type === "items") category = "Study";
     else {
       const match = CATEGORIES.find(c => c.toLowerCase() === name.toLowerCase());
       if(match) category = match;
@@ -526,6 +528,7 @@ function setDone(h, key, done, exercise){
   if(!data.log[key]) data.log[key] = {};
   const day = data.log[key];
   if(h.type === "gym" || h.type === "items"){
+    if(typeof exercise !== "string" || !exercise) return;
     if(!day[h.id] || typeof day[h.id] !== "object") day[h.id] = {};
     // Keep the key with false so an unticked exercise stays in the day's list.
     day[h.id][exercise] = done === true;
@@ -550,17 +553,18 @@ function countCompleteDays(){
 /* ---------- 4. STREAKS (always calculated from the log) ---------- */
 // Streak of one habit, simulated FORWARDS from the day it was created up to today.
 // Days the habit is not scheduled are skipped and do not change the streak.
-function computeHabitStreak(h, today){
-  let streak = 0;
+function walkHabitStreak(h, today){
+  let streak = 0, best = 0;
   const misses = {};                 // week -> missed scheduled days in that week (gym rest days)
   let d = parseKey(h.createdAt);
   const end = parseKey(today);
-  if(d.getTime() > end.getTime()) return 0;   // habit does not exist yet
+  if(d.getTime() > end.getTime()) return { current: 0, best: 0 };   // habit does not exist yet
   while(d.getTime() <= end.getTime()){
     const key = keyOf(d);
     if(h.days.indexOf(weekdayOf(key)) >= 0){
       if(isHabitDone(h, key)){
         streak++;                                     // a completed scheduled day
+        if(streak > best) best = streak;
       }else if(key !== today){
         // Today is not finished yet: neither a miss nor a reset, just ignore it.
         if(h.type === "gym"){
@@ -574,8 +578,10 @@ function computeHabitStreak(h, today){
     }
     d = addDays(d, 1);
   }
-  return streak;
+  return { current: streak, best: best };
 }
+function computeHabitStreak(h, today){ return walkHabitStreak(h, today).current; }
+function computeHabitBestStreak(h, today){ return walkHabitStreak(h, today).best; }
 
 // How many scheduled days of a gym habit were missed in the week of a date,
 // counted from the Monday of that week up to and including the date itself.
@@ -720,10 +726,12 @@ function readForm(){
   };
 }
 
+let lastAutoName = "Water";
 // Clear the form so it is ready for the next habit.
 function resetForm(){
   renderCatPicker();
   $("#habitName").value = "Water";
+  lastAutoName = "Water";
   $("#restNote").hidden = true;
   document.querySelectorAll(".days input[type=checkbox]").forEach(c => c.checked = false);
   $("#reminder").value = "07:15";
@@ -757,12 +765,23 @@ function openEdit(h){
   $("#saveLabel").textContent = "Save changes";
   $("#addReminder").hidden = false;
   $("#reminderNote").hidden = false;
+  lastAutoName = h.name;
   updateRestNote();
+  updateIntervalVisibility();
   show("newHabit");
+}
+
+let bannerTimer = null;
+function showBanner(msg, ms = 4000){
+  clearTimeout(bannerTimer);
+  $("#banner").textContent = msg;
+  $("#banner").hidden = false;
+  bannerTimer = setTimeout(() => { $("#banner").hidden = true; }, ms);
 }
 
 // Save a new habit.
 $("#saveHabit").addEventListener("click", () => {
+  if(!$("#newHabit").classList.contains("on")) return;
   const f = readForm();
   if(!f.name){ formError("Please enter a habit name."); return; }
   if(!f.days.length){ formError("Select at least one day."); return; }
@@ -796,17 +815,28 @@ $("#saveHabit").addEventListener("click", () => {
       createdAt: todayKey()
     });
   }
+  const todayWd = weekdayOf(todayKey());
+  const notDueToday = f.days.indexOf(todayWd) < 0;
+  const dayNames = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  const dayList = f.days.slice().sort((a,b) => a - b).map(d => dayNames[d]).join(", ");
   saveData();
   resetForm();
   playConfirm(); vibrate(8);
   show("home");
+  if(notDueToday){
+    showBanner("Saved. Scheduled for " + dayList + ". Not due today.", 5000);
+  }
 });
 function isIntervalCat(c){ return c === "Water" || c === "Break from screen"; }
-function updateIntervalFields(){
+function updateIntervalVisibility(){
   const cat = document.querySelector('input[name="category"]:checked');
   const on = cat && isIntervalCat(cat.value);
   $("#reminderSimple").hidden = !!on;
   $("#reminderInterval").hidden = !on;
+  return { cat, on };
+}
+function updateIntervalFields(){
+  const { cat, on } = updateIntervalVisibility();
   if(on && cat.value === "Break from screen"){ $("#intervalNum").value = 30; $("#intervalUnit").value = "minutes"; }
   else if(on){ $("#intervalNum").value = 1; $("#intervalUnit").value = "hours"; }
 }
@@ -844,13 +874,11 @@ function reminderTick(){
     if(firedSlots.has(id)) return;
     firedSlots.add(id);
     if(window.Notification && Notification.permission==="granted") new Notification(h.name);
-    $("#banner").hidden = false; $("#banner").textContent = h.name+" reminder";
+    showBanner(h.name+" reminder", 4000);
     playConfirm(); vibrate(15);
-    setTimeout(()=>{ $("#banner").hidden = true; }, 4000);
   });
 }
 setInterval(reminderTick, 30000);
-let lastAutoName = "Water";
 $("#catPicker").addEventListener("change", e => {
   const r = e.target.closest('input[name="category"]'); if(!r) return;
   const current = $("#habitName").value.trim();
@@ -893,7 +921,7 @@ let group = "Chest";        // the muscle group that is open
 // The exercises of a group: the built in ones plus the custom ones that were saved.
 function activeLib(){
   const h = pickerTarget ? data.habits.find(x => x.id === pickerTarget.habitId) : null;
-  return (h && h.category === "Study") ? studyLib : lib;
+  return (h && (h.category === "Study" || h.type === "items")) ? studyLib : lib;
 }
 function groupItems(g){
   const L = activeLib();
@@ -926,15 +954,23 @@ function renderSlip(){
 function openPicker(habitId, key){
   pickerTarget = { habitId: habitId, key: key };
   const h = data.habits.find(x => x.id === habitId);
-  const isStudy = h && h.category === "Study";
-  const titleEl = document.querySelector("#picker .top b");
+  const isStudy = !!(h && (h.category === "Study" || h.type === "items"));
+  const titleEl = document.querySelector("#picker .top h1");
   if(titleEl) titleEl.textContent = isStudy ? "Select topics" : "Select exercises";
+  const iconUse = $("#pickerIcon");
+  if(iconUse) iconUse.setAttribute("href", isStudy ? "#book" : "#gym");
+  const grpLbl = $("#pickerGroupLabel");
+  if(grpLbl) grpLbl.textContent = isStudy ? "[1] Subject / topic group" : "[1] Department / muscle group";
   const sub = document.querySelector("#picker .card b");
-  if(sub) sub.textContent = isStudy ? "Select names only." : "Select names only.";
+  if(sub) sub.textContent = isStudy ? "Select topics only." : "Select names only. No sets, reps or weights.";
+  const confirmLabel = $("#confirmLabel");
+  if(confirmLabel) confirmLabel.textContent = isStudy ? "Confirm topics" : "Confirm exercises";
+  const policyFoot = $("#pickerPolicy");
+  if(policyFoot) policyFoot.textContent = isStudy ? "*** Store policy: topics only ***" : "*** Store policy: no sets / reps logged here ***";
   $("#search").placeholder = isStudy ? "Search topics..." : "Search exercises...";
   picked.clear();
   dayExercises(key, habitId).forEach(n => picked.add(n));
-  const L = (data.habits.find(x=>x.id===habitId)||{}).category === "Study" ? studyLib : lib;
+  const L = isStudy ? studyLib : lib;
   group = Object.keys(L)[0];
   $("#search").value = "";
   renderGroups(); renderItems(); renderSlip();
@@ -949,7 +985,9 @@ $("#items").addEventListener("change", e => {
 });
 $("#items").addEventListener("click", e => {
   if(!e.target.closest("#addCustom")) return;
-  const name = (prompt("Exercise name (no sets or reps):") || "").trim();
+  const h = pickerTarget ? data.habits.find(x => x.id === pickerTarget.habitId) : null;
+  const isStudy = !!(h && (h.category === "Study" || h.type === "items"));
+  const name = (prompt(isStudy ? "Topic name:" : "Exercise name (no sets or reps):") || "").trim();
   if(!name) return;
   // Remember the custom exercise so it is still there after a refresh.
   if(!Array.isArray(data.customExercises[group])) data.customExercises[group] = [];
@@ -994,33 +1032,39 @@ function habitCard(h, today){
   const entry = dayEntry(today, h.id) || {};
   const names = dayExercises(today, h.id);
   // "Repeat last workout" is only offered when an earlier list exists.
+  const isItems = h.type === "items";
+  const repeatLabel = isItems ? "Repeat last topics" : "Repeat last workout";
+  const chooseLabel = isItems ? "Choose today’s topics" : "Choose today’s exercises";
+  const editLabel = isItems ? "Edit today’s topics" : "Edit today’s exercises";
+  const listTitle = isItems ? "Topic checklist" : "Routine checklist";
   const repeatBtn = lastWorkoutNames(h.id, today)
-    ? `<button class="btn sm" data-act="repeat" data-id="${esc(h.id)}">Repeat last workout</button>` : "";
+    ? `<button class="btn sm" data-act="repeat" data-id="${esc(h.id)}">${repeatLabel}</button>` : "";
   const pickerBtn = label => `<button class="btn sm" data-act="choose" data-id="${esc(h.id)}">${label}</button>`;
   if(!names.length){
     // Nothing chosen for today yet: the picker replaces the checklist.
     return `<article class="card habit${done ? " ok" : ""}">${head}
-      <div class="acts">${pickerBtn("Choose today’s exercises")}${repeatBtn}</div>
+      <div class="acts">${pickerBtn(chooseLabel)}${repeatBtn}</div>
     </article>`;
   }
   const ticked = names.filter(ex => entry[ex] === true).length;
   const rows = names.map(ex =>
     `<label class="ex"><span class="nm">${esc(ex)}</span><input class="check" type="checkbox" data-h="${esc(h.id)}" data-ex="${esc(ex)}"${entry[ex] === true ? " checked" : ""}></label>`).join("");
   const routine = `<div class="routine">
-    <div class="rh up"><span>Routine checklist</span><span>${ticked}/${names.length} active</span></div>
+    <div class="rh up"><span>${listTitle}</span><span>${ticked}/${names.length} active</span></div>
     ${rows}
   </div>
-  <div class="acts">${pickerBtn("Edit today’s exercises")}${repeatBtn}</div>`;
+  <div class="acts">${pickerBtn(editLabel)}${repeatBtn}</div>`;
   return `<article class="card habit${done ? " ok" : ""}">${head}${routine}</article>`;
 }
 
 // The message when there is nothing to show.
 function emptyState(){
-  if(!data.habits.length)
-    if(data.habits.length && !list.length) return `<div class="card" style="text-align:center"><b class="up">No habits due today. ${data.habits.length} habits are scheduled on other days.</b></div>`;
+  if(data.habits.length){
+    const n = data.habits.length;
+    return `<div class="card" style="text-align:center"><b class="up">No habits due today. ${n} ${n === 1 ? "habit is" : "habits are"} scheduled on other days.</b></div>`;
+  }
   return `<div class="card" style="text-align:center"><b class="up">Tap + to add your first habit.</b>` +
            `<button class="btn" data-go="newHabit" style="margin-top:14px">Add your first habit</button></div>`;
-  return `<div class="card" style="text-align:center"><b class="up">Nothing scheduled for today.</b></div>`;
 }
 
 // Draw the home screen from the saved data.
@@ -1066,6 +1110,7 @@ function focusCheckbox(habitId, exercise){
   }
 }
 
+let billTimer = null;
 // A tick is saved straight away.
 $("#habitList").addEventListener("change", e => {
   const box = e.target.closest("input.check");
@@ -1073,6 +1118,8 @@ $("#habitList").addEventListener("change", e => {
   const habitId = box.dataset.h, exercise = box.dataset.ex;
   const h = data.habits.find(x => x.id === habitId);
   if(!h) return;
+  clearTimeout(billTimer);
+  billTimer = null;
   const today = todayKey();
   const doneBefore = allDoneToday(today);            // was the whole day already done?
   if(h.type === "gym" || h.type === "items") setDone(h, today, box.checked, exercise);
@@ -1085,7 +1132,7 @@ $("#habitList").addEventListener("change", e => {
   // The bill opens only when THIS tick finished the day.
   if(!doneBefore && allDoneToday(today)){
     vibrate([30,40,30]);
-    setTimeout(openBill, 600);
+    billTimer = setTimeout(openBill, 600);
   }
 });
 
@@ -1138,18 +1185,18 @@ function renderStats(){
     const key = keyOf(addDays(parseKey(today), -i));
     const st = dayStatus(key);
     const pct = st.total ? Math.round(st.done/st.total*100) : 0;
-    chart += `<div style="flex:1;text-align:center"><div style="height:${Math.max(2,pct)}%;background:var(--blue);border:2px solid var(--ink)" title="${pct}%"></div><small>${key.slice(8)}</small></div>`;
+    chart += `<div style="flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;gap:4px;text-align:center"><div style="flex:1;display:flex;align-items:flex-end"><div style="width:100%;height:${Math.max(4,pct)}%;background:var(--blue);border:2px solid var(--ink)" title="${pct}%"></div></div><small>${key.slice(8)}</small></div>`;
   }
   chart += '</div></div>';
   const rows = data.habits.map(h => {
-    const cur = computeHabitStreak(h, today);
-    let best = 0, done = 0, total = 0;
+    const st = walkHabitStreak(h, today);
+    const cur = st.current, best = st.best;
+    let done = 0, total = 0;
     for(let i=29;i>=0;i--){
       const key = keyOf(addDays(parseKey(today), -i));
       if(h.days.indexOf(weekdayOf(key))<0 || key<h.createdAt) continue;
       total++; if(isHabitDone(h,key)) done++;
     }
-    best = computeBestStreak(today);
     const rate = total ? Math.round(done/total*100) : 0;
     return `<div class="card" style="margin-top:12px"><b>${esc(h.name)}</b><div class="slip"><span>Current streak</span><span>${cur}</span></div><div class="slip"><span>Best streak</span><span>${best}</span></div><div class="slip"><span>Last 30 days</span><span>${rate}% (${done}/${total})</span></div></div>`;
   }).join("");
@@ -1173,7 +1220,7 @@ function buildReceipt(){
     let line = esc(h.name);
     if(h.type === "gym" || h.type === "items"){
       const names = dayExercises(today, h.id);
-      if(names.length) line += " — " + names.join(", ");
+      if(names.length) line += " — " + esc(names.join(", "));
     }
     items += `<div class="ri"><span>${tick} ${line}</span></div>`;
   });
@@ -1191,17 +1238,24 @@ function buildReceipt(){
     <svg class="zig" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true"><polygon points="${zig}"/></svg>
   </div>`;
 }
+let printingTimer = null;
 function openBill(){
+  clearTimeout(billTimer); billTimer = null;
+  if(!allDoneToday(todayKey()) || $("#bill").classList.contains("open")) return;
+  clearTimeout(printingTimer);
   $("#paperWin").innerHTML = buildReceipt();     // rebuilding restarts the print animation
   $("#bill").classList.add("open");
   $("#printer").classList.add("printing");
-  setTimeout(() => $("#printer").classList.remove("printing"), 1980);
+  printingTimer = setTimeout(() => $("#printer").classList.remove("printing"), 1980);
   document.body.style.overflow = "hidden";
   $("#billClose").focus({preventScroll:true});
   startBillSounds();
 }
 function closeBill(){
+  clearTimeout(billTimer); billTimer = null;
+  clearTimeout(printingTimer);
   $("#bill").classList.remove("open");
+  $("#printer").classList.remove("printing");
   document.body.style.overflow = "";
   stopBillSounds();
 }
