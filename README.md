@@ -1,3 +1,7 @@
+<p align="left">
+  <img src="assets/logo.svg" alt="Punchout logo" width="72">
+</p>
+
 # Punchout
 
 Punchout is a habit tracker that runs entirely in the browser. There is no backend and no login: all data is stored in `localStorage`.
