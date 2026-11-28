@@ -15,7 +15,7 @@
 <style>
 /* ===== TOKENS (from the Stitch design system) ===== */
 :root{--ink:#3B2418;--paper:#F2E8DA;--blue:#8EC5FF;--w:#fff;
---sans:"Space Grotesk",system-ui,sans-serif;--mono:"Space Mono",ui-monospace,monospace}
+--sans:"Space Grotesk",system-ui,sans-serif;--mono:"Space Mono",ui-monospace,monospace;--print-ms:1920ms}
 *{box-sizing:border-box;margin:0;padding:0;border-radius:0}
 [hidden]{display:none!important}
 body{background:var(--paper);color:var(--ink);font:500 15px/1.4 var(--sans)}
@@ -120,7 +120,7 @@ button{background:none;border:0;cursor:pointer}
 .pr.printing .pb i{animation:blink .21s steps(2) infinite}
 .slot{position:absolute;left:14px;right:14px;bottom:8px;height:8px;background:var(--ink)}
 .pw{position:relative;z-index:1;margin:-6px 14px 0;padding-bottom:14px;overflow:hidden}
-.paper{position:relative;padding:22px 16px;background:var(--w);color:var(--ink);border:3px solid var(--ink);border-bottom:0;font:400 12px/1.6 var(--mono);animation:print 1.92s steps(40,end) both}
+.paper{position:relative;padding:22px 16px;background:var(--w);color:var(--ink);border:3px solid var(--ink);border-bottom:0;font:400 12px/1.6 var(--mono);animation:print var(--print-ms) steps(40,end) both}
 .zig{position:absolute;left:-3px;right:-3px;top:calc(100% - 1px);width:calc(100% + 6px);height:11px}
 .zig polygon{fill:var(--w);stroke:var(--ink);stroke-width:3;vector-effect:non-scaling-stroke}
 .rc{text-align:center}.rt{font-weight:700;font-size:15px;letter-spacing:.1em}
@@ -131,7 +131,7 @@ button{background:none;border:0;cursor:pointer}
 .dbl{border:0;border-top:4px double var(--ink);margin:10px 0}
 .best{margin:12px 0;padding:8px;text-align:center;font-weight:700;background:var(--blue);border:3px solid var(--ink);box-shadow:4px 4px 0 var(--ink)}
 .barcode{height:46px;margin:12px 0 4px;background:repeating-linear-gradient(90deg,var(--ink) 0 2px,transparent 2px 4px,var(--ink) 4px 5px,transparent 5px 8px,var(--ink) 8px 11px,transparent 11px 13px)}
-.bill .btn{margin-top:26px;animation:fade .4s 1.98s both}
+.bill .btn{margin-top:26px;animation:fade .4s calc(var(--print-ms) + 60ms) both}
 @keyframes print{from{transform:translateY(-100%)}}
 @keyframes blink{50%{opacity:.2}}
 @keyframes fade{from{opacity:0}}
@@ -1396,15 +1396,25 @@ function buildReceipt(){
     <svg class="zig" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true"><polygon points="${zig}"/></svg>
   </div>`;
 }
+function getPrintMs(){
+  const raw = getComputedStyle(document.documentElement).getPropertyValue("--print-ms").trim();
+  if(raw.endsWith("ms")) return parseFloat(raw) || 1920;
+  if(raw.endsWith("s")) return (parseFloat(raw) || 1.92) * 1000;
+  return parseFloat(raw) || 1920;
+}
+function isReducedMotion(){
+  return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+}
 let printingTimer = null;
 function openBill(){
   clearTimeout(billTimer); billTimer = null;
   if(!allDoneToday(todayKey()) || $("#bill").classList.contains("open")) return;
   clearTimeout(printingTimer);
+  const printMs = getPrintMs();
   $("#paperWin").innerHTML = buildReceipt();     // rebuilding restarts the print animation
   $("#bill").classList.add("open");
   $("#printer").classList.add("printing");
-  printingTimer = setTimeout(() => $("#printer").classList.remove("printing"), 1980);
+  printingTimer = setTimeout(() => $("#printer").classList.remove("printing"), isReducedMotion() ? 10 : printMs + 60);
   document.body.style.overflow = "hidden";
   $("#billClose").focus({preventScroll:true});
   startBillSounds();
@@ -1549,11 +1559,11 @@ function playError(){
   setTimeout(() => playTone(90, "square", 0.15, 0.5), 70);
 }
 function playBillStep(){
-  playNoise(0.06, 0.3);
+  playNoise(0.04, 0.3);
 }
 function playBillDing(){
   playTone(980, "sine", 0.35, 0.5);
-  setTimeout(() => playTone(1175, "sine", 0.35, 0.5), 120);
+  billSounds.push(setTimeout(() => playTone(1175, "sine", 0.35, 0.5), 120));
 }
 function playBillTear(){
   playNoise(0.18, 0.35);
@@ -1566,20 +1576,30 @@ function stopBillSounds(){
 function startBillSounds(){
   stopBillSounds();
   resumeAudio();
-  const stepMs = 80;
-  const steps = 40;  // 3.2 s / 80 ms
+  if(isReducedMotion()){
+    playBillDing();
+    vibrate(20);
+    return;
+  }
+  const printMs = getPrintMs();
+  const steps = 40;
+  const stepMs = printMs / steps;
+  const startAt = performance.now();
   let step = 0;
   function next(){
-    if(step >= steps){
+    const elapsed = performance.now() - startAt;
+    if(step >= steps || elapsed >= printMs){
       playBillDing();
       playBillTear();
       vibrate(60);
       return;
     }
     playBillStep();
-    if(step % 2 === 0) vibrate(6);  // a 6 ms pulse about every 160 ms
+    if(step % 2 === 0) vibrate(6);  // a 6 ms pulse about every 96 ms
     step++;
-    billSounds.push(setTimeout(next, stepMs));
+    const target = startAt + step * stepMs;
+    const delay = Math.max(0, target - performance.now());
+    billSounds.push(setTimeout(next, delay));
   }
   next();
 }

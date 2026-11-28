@@ -498,6 +498,67 @@ async function run() {
       shows = await page.evaluate(() => window.__bannerShows.slice());
       assert.strictEqual(shows.length, 1, "Reminder must not fire when habit is already done");
     });
+
+    await test("Bill sound & print animation sync (page.clock) and stop on close", async (page) => {
+      await page.clock.install({ time: new Date(2026, 10, 9, 10, 0, 0) });
+      await page.goto(APP_URL);
+      const t0 = await page.evaluate(() => {
+        data.habits.push({ id: "h1", name: "Code", icon: "code", category: "Code", type: "normal", days: [0,1,2,3,4,5,6], reminder: "07:15", createdAt: "2026-11-09" });
+        data.log["2026-11-09"] = { h1: true };
+        saveData();
+        renderHome();
+        window.__billSteps = [];
+        window.__billDings = [];
+        window.__billTears = [];
+        const origStep = playBillStep;
+        const origDing = playBillDing;
+        const origTear = playBillTear;
+        playBillStep = function () { window.__billSteps.push(performance.now()); return origStep.apply(this, arguments); };
+        playBillDing = function () { window.__billDings.push(performance.now()); return origDing.apply(this, arguments); };
+        playBillTear = function () { window.__billTears.push(performance.now()); return origTear.apply(this, arguments); };
+        const start = performance.now();
+        openBill();
+        return start;
+      });
+
+      // Advance through the 1920 ms print duration
+      await page.clock.runFor(2000);
+      const res = await page.evaluate(() => ({
+        steps: window.__billSteps.length,
+        dings: window.__billDings.slice(),
+        tears: window.__billTears.slice(),
+        printMs: getPrintMs()
+      }));
+      assert.strictEqual(res.printMs, 1920);
+      assert.strictEqual(res.steps, 40, `Expected 40 sound steps, got ${res.steps}`);
+      assert.strictEqual(res.dings.length, 1, "Expected 1 ding");
+      assert.strictEqual(res.tears.length, 1, "Expected 1 tear");
+      const dingElapsed = res.dings[0] - t0;
+      assert(Math.abs(dingElapsed - res.printMs) <= 100,
+        `Ding happened at ${dingElapsed}ms, expected within 100ms of ${res.printMs}ms`);
+
+      // Closing the bill mid-print must stop all remaining sound steps and the ding
+      await page.click("#billClose");
+      await page.evaluate(() => {
+        window.__billSteps = [];
+        window.__billDings = [];
+        window.__billTears = [];
+        openBill();
+      });
+      await page.clock.runFor(500);
+      await page.click("#billClose");
+      const stepsAtClose = await page.evaluate(() => window.__billSteps.length);
+      assert(stepsAtClose > 0 && stepsAtClose < 40, `Expected partial steps mid-print, got ${stepsAtClose}`);
+      await page.clock.runFor(2500);
+      const afterClose = await page.evaluate(() => ({
+        steps: window.__billSteps.length,
+        dings: window.__billDings.length,
+        tears: window.__billTears.length
+      }));
+      assert.strictEqual(afterClose.steps, stepsAtClose, "Remaining sound steps must stop on closeBill");
+      assert.strictEqual(afterClose.dings, 0, "Ding must not fire after closeBill");
+      assert.strictEqual(afterClose.tears, 0, "Tear must not fire after closeBill");
+    });
   }
 
   for (const vp of VIEWPORTS) {
@@ -577,6 +638,12 @@ async function run() {
     try {
       await rmPage.goto(APP_URL + "?date=2026-11-09");
       await rmPage.evaluate(() => {
+        window.__rmSteps = 0;
+        window.__rmDings = 0;
+        const origStep = playBillStep;
+        const origDing = playBillDing;
+        playBillStep = function () { window.__rmSteps++; return origStep.apply(this, arguments); };
+        playBillDing = function () { window.__rmDings++; return origDing.apply(this, arguments); };
         data.habits.push({ id: "h1", name: "Code", icon: "code", category: "Code", type: "normal", days: [0,1,2,3,4,5,6], reminder: "07:15", createdAt: "2026-11-09" });
         data.log["2026-11-09"] = { h1: true };
         saveData();
@@ -586,11 +653,15 @@ async function run() {
       const rm = await rmPage.evaluate(() => ({
         paperDur: getComputedStyle(document.querySelector(".paper")).animationDuration,
         btnDur: getComputedStyle(document.querySelector("#bill .btn")).animationDuration,
-        btnDelay: getComputedStyle(document.querySelector("#bill .btn")).animationDelay
+        btnDelay: getComputedStyle(document.querySelector("#bill .btn")).animationDelay,
+        steps: window.__rmSteps,
+        dings: window.__rmDings
       }));
       assert.strictEqual(rm.paperDur, "0.01s");
       assert.strictEqual(rm.btnDur, "0.01s");
       assert.strictEqual(rm.btnDelay, "0s");
+      assert.strictEqual(rm.steps, 0, "Reduced motion must not play 40-step printing noise");
+      assert.strictEqual(rm.dings, 1, "Reduced motion must play only the final ding");
       passed++;
       console.log("  PASS: prefers-reduced-motion shortens bill & button animations");
     } catch (err) {
