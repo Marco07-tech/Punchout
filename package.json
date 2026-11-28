@@ -4,8 +4,8 @@
   "description": "Punchout - habit tracking app",
   "main": "test-streaks.js",
   "scripts": {
-  "sync-web": "node -e \"require('fs').copyFileSync('index.html','www/index.html')\"",
-    "test": "node test-streaks.js",
+    "sync-web": "node -e \"require('fs').copyFileSync('index.html','www/index.html')\"",
+    "test": "node test-streaks.js && node test-ui.js",
     "copy-web": "if not exist www mkdir www && copy /y index.html www\\index.html",
     "build:android": "cd android && gradlew assembleDebug"
   },
@@ -21,10 +21,12 @@
   },
   "homepage": "https://github.com/Marco07-tech/Punchout#readme",
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.1",
     "@capacitor/android": "^8.6.2",
     "@capacitor/app": "^8.1.2",
     "@capacitor/cli": "^8.6.2",
     "@capacitor/core": "^8.6.2",
+    "lighthouse": "^13.6.0",
     "playwright": "^1.65.1"
   }
 }
