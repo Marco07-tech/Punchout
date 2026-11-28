@@ -3,11 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none';">
+<meta name="referrer" content="no-referrer">
 <title>Punchout</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-<noscript><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"></noscript>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" crossorigin="anonymous" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" crossorigin="anonymous"></noscript>
 <style>
 /* ===== TOKENS (from the Stitch design system) ===== */
 :root{--ink:#3B2418;--paper:#F2E8DA;--blue:#8EC5FF;--w:#fff;
@@ -18,6 +20,7 @@ body{background:var(--paper);color:var(--ink);font:500 15px/1.4 var(--sans)}
 button,input,select{font:inherit;color:inherit}
 button{background:none;border:0;cursor:pointer}
 :focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+.check,.btn,.chip,.input{scroll-margin-bottom:96px}
 .app{max-width:430px;margin:0 auto;min-height:100vh;padding:0 16px 130px}
 .screen{display:none}.screen.on{display:block}
 .i{width:1.3em;height:1.3em;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:square;flex-shrink:0}
@@ -73,7 +76,7 @@ button{background:none;border:0;cursor:pointer}
 .ic{width:48px;height:48px;display:grid;place-items:center;background:var(--paper);border:3px solid var(--ink)}
 .ok .ic{background:var(--blue)}
 .hr .tx{flex:1;min-width:0}
-.hn{font-size:19px;font-weight:700;text-transform:uppercase;line-height:1.15}
+.hn{font-size:19px;font-weight:700;text-transform:uppercase;line-height:1.15;overflow-wrap:anywhere}
 .hs{font:400 13px var(--mono);display:flex;align-items:center;gap:4px}
 .check{appearance:none;-webkit-appearance:none;width:28px;height:28px;flex-shrink:0;background:var(--w);border:3px solid var(--ink);display:grid;place-items:center;cursor:pointer}
 .check:checked{background:var(--blue);box-shadow:2px 2px 0 var(--ink)}
@@ -87,13 +90,13 @@ button{background:none;border:0;cursor:pointer}
 .acts .btn.sm{margin-top:0}
 .routine{margin-top:14px;padding:12px;background:var(--paper);border:3px solid var(--ink)}
 .rh{display:flex;justify-content:space-between;padding-bottom:8px;margin-bottom:10px;border-bottom:3px solid #D8C9B2;font-size:11px}
-.ex{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding:10px 12px;background:var(--w);border:3px solid var(--ink);box-shadow:2px 2px 0 var(--ink);font-weight:700;cursor:pointer}
+.ex{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px;padding:10px 12px;background:var(--w);border:3px solid var(--ink);box-shadow:2px 2px 0 var(--ink);font-weight:700;cursor:pointer}.ex .nm{overflow-wrap:anywhere;min-width:0}
 .ex .check{width:24px;height:24px}
 .punch{display:flex;align-items:center;gap:10px;margin-top:6px;padding:14px;border:3px dashed var(--ink);font:700 12px var(--mono);letter-spacing:.04em}
 .punch b{margin-left:auto}
 
 /* ===== PICKER ===== */
-.slip{display:flex;justify-content:space-between;padding:6px 0;font:400 13px var(--mono)}
+.slip{display:flex;justify-content:space-between;gap:8px;padding:6px 0;font:400 13px var(--mono);overflow-wrap:anywhere}
 .slip i{font-style:normal;padding:0 8px;background:var(--ink);color:var(--blue);font-weight:700;font-size:11px;line-height:20px}
 .tally{display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:3px solid var(--ink);font:700 13px var(--mono)}
 .foot{margin-top:18px;text-align:center;font:400 11px var(--mono);letter-spacing:.1em;opacity:.8}
@@ -119,7 +122,7 @@ button{background:none;border:0;cursor:pointer}
 .zig{position:absolute;left:-3px;right:-3px;top:calc(100% - 1px);width:calc(100% + 6px);height:11px}
 .zig polygon{fill:var(--w);stroke:var(--ink);stroke-width:3;vector-effect:non-scaling-stroke}
 .rc{text-align:center}.rt{font-weight:700;font-size:15px;letter-spacing:.1em}
-.ri{display:flex;justify-content:space-between;gap:10px}
+.ri{display:flex;justify-content:space-between;gap:10px;overflow-wrap:anywhere}
 .ri.hd,.ri.tt{font-weight:700}
 .ri.sub{padding-left:10px;font-size:11px}
 .dash{border:0;border-top:2px dashed var(--ink);margin:10px 0}
@@ -224,7 +227,7 @@ button{background:none;border:0;cursor:pointer}
   <div class="row2" style="align-items:center;font-size:12px"><span class="up">Item registration // Mod. 0042</span><span class="tag up" style="margin:0;justify-self:end;background:#EADFCC">Status: new entry</span></div>
 
   <div class="lab up"><label for="habitName">Habit name</label><span style="font-weight:500">REQ*</span></div>
-  <input class="input" id="habitName" type="text" placeholder="e.g. Read for 30 minutes">
+  <input class="input" id="habitName" type="text" maxlength="100" placeholder="e.g. Read for 30 minutes">
 
   <div class="lab up">Choose category</div>
   <div class="row3" style="display:grid;grid-template-columns:repeat(4,1fr)" id="catPicker"></div>
@@ -361,8 +364,72 @@ const CAT_ICON = {Water:"drop",Gym:"gym",Study:"book",Code:"code",Custom:"plus"}
 function catIcon(c){ return CAT_ICON[c] || "info"; }
 function catType(c){ return c === "Gym" ? "gym" : (c === "Study" ? "items" : "normal"); }
 const STORE_KEY = "habitStore.v1";
+const MAX_HABITS = 100;
+const MAX_LOG_DAYS = 2000;
+const MAX_IMPORT_BYTES = 512 * 1024;
+const POISON_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
+function isSafeKey(k){ return typeof k === "string" && !POISON_KEYS.has(k); }
+function isValidTime(s){ return typeof s === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(s); }
 function emptyData(){ return { habits: [], log: {}, customExercises: {} }; }
+
+function sanitizeLog(rawLog){
+  const log = {};
+  if(!rawLog || typeof rawLog !== "object" || Array.isArray(rawLog)) return log;
+  const keys = Object.keys(rawLog).filter(k => isSafeKey(k) && isDateKey(k)).slice(-MAX_LOG_DAYS);
+  keys.forEach(key => {
+    const day = rawLog[key];
+    if(!day || typeof day !== "object" || Array.isArray(day)) return;
+    const cleanDay = {};
+    Object.keys(day).forEach(habitId => {
+      if(!isSafeKey(habitId)) return;
+      const val = day[habitId];
+      if(typeof val === "boolean"){
+        cleanDay[habitId] = val;
+      }else if(val && typeof val === "object" && !Array.isArray(val)){
+        const cleanEntry = {};
+        Object.keys(val).forEach(name => {
+          if(!isSafeKey(name)) return;
+          const v = val[name];
+          if(typeof v === "boolean") cleanEntry[name] = v;
+        });
+        if(Object.keys(cleanEntry).length) cleanDay[habitId] = cleanEntry;
+      }
+    });
+    if(Object.keys(cleanDay).length) log[key] = cleanDay;
+  });
+  return log;
+}
+
+function sanitizeCustomExercises(rawEx){
+  const customExercises = {};
+  if(!rawEx || typeof rawEx !== "object" || Array.isArray(rawEx)) return customExercises;
+  Object.keys(rawEx).slice(0, 50).forEach(group => {
+    if(!isSafeKey(group)) return;
+    const arr = rawEx[group];
+    if(!Array.isArray(arr)) return;
+    const clean = [...new Set(arr.filter(n => typeof n === "string")
+      .map(n => n.trim())
+      .filter(n => n.length > 0 && n.length <= 40))].slice(0, 100);
+    if(clean.length) customExercises[group] = clean;
+  });
+  return customExercises;
+}
+
+function sanitizeStore(parsed){
+  const rawHabits = Array.isArray(parsed.habits) ? parsed.habits.slice(0, MAX_HABITS) : [];
+  const seenIds = new Set();
+  const habits = rawHabits.filter(h => h && typeof h === "object" && !Array.isArray(h)).map(fixHabit).filter(Boolean).map(h => {
+    if(seenIds.has(h.id)) h.id = makeId();
+    seenIds.add(h.id);
+    return h;
+  });
+  return {
+    habits: habits,
+    log: sanitizeLog(parsed.log),
+    customExercises: sanitizeCustomExercises(parsed.customExercises)
+  };
+}
 
 // Read the saved data. Missing or broken data gives an empty app instead of a crash.
 function loadData(){
@@ -370,29 +437,40 @@ function loadData(){
     const raw = localStorage.getItem(STORE_KEY);
     if(!raw) return emptyData();
     const parsed = JSON.parse(raw);
-    if(!parsed || typeof parsed !== "object") return emptyData();
-    return {
-      habits: Array.isArray(parsed.habits)
-        ? parsed.habits.filter(h => h && typeof h === "object").map(fixHabit).filter(h => h)
-        : [],
-      log: (parsed.log && typeof parsed.log === "object" && !Array.isArray(parsed.log)) ? parsed.log : {},
-      customExercises: (parsed.customExercises && typeof parsed.customExercises === "object" && !Array.isArray(parsed.customExercises)) ? parsed.customExercises : {}
-    };
+    if(!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return emptyData();
+    return sanitizeStore(parsed);
   }catch(e){
     console.warn("Saved habits could not be read - starting empty.", e);
     return emptyData();
   }
 }
 
-// Write everything back to the store.
+// Write everything back to the store. Returns true on success, false on QuotaExceededError.
 function saveData(){
-  try{ localStorage.setItem(STORE_KEY, JSON.stringify(data)); }
-  catch(e){ console.warn("Could not save habits.", e); }
+  try{
+    localStorage.setItem(STORE_KEY, JSON.stringify(data));
+    return true;
+  }catch(e){
+    console.warn("Could not save habits.", e);
+    if(typeof showBanner === "function") showBanner("Storage is full. Changes could not be saved.", 6000);
+    if(typeof playError === "function") playError();
+    return false;
+  }
+}
+
+function commitData(mutator){
+  const snap = JSON.stringify(data);
+  mutator();
+  if(!saveData()){
+    data = JSON.parse(snap);
+    return false;
+  }
+  return true;
 }
 
 // Give every habit all the fields we expect, so odd data cannot break the app.
 function fixHabit(h){
-  const name = typeof h.name === "string" ? h.name.trim() : "";
+  const name = typeof h.name === "string" ? h.name.trim().slice(0, 100) : "";
   if(!name) return null;
   const days = Array.isArray(h.days)
     ? h.days.map(Number).filter(n => Number.isInteger(n) && n >= 0 && n <= 6)
@@ -411,18 +489,24 @@ function fixHabit(h){
     }
   }
   if(!category) category = "Custom";
+  const unit = (h.intervalUnit === "hours" || h.intervalUnit === "minutes") ? h.intervalUnit : (category==="Break from screen"?"minutes":"hours");
+  const minVal = unit === "minutes" ? 15 : 1;
+  const rawNum = Number(h.intervalNum);
+  const intervalNum = (h.intervalNum !== null && h.intervalNum !== "" && Number.isFinite(rawNum) && rawNum >= minVal && rawNum <= 1440)
+    ? Math.round(rawNum)
+    : (category==="Break from screen"?30:1);
   return {
-    id: (typeof h.id === "string" && h.id) ? h.id : makeId(),
+    id: (typeof h.id === "string" && /^[a-zA-Z0-9_-]{1,40}$/.test(h.id)) ? h.id : makeId(),
     name: name,
     icon: catIcon(category),
     category: category,
     type: catType(category),
     days: [...new Set(days)].sort((a,b) => a-b),
-    reminder: (typeof h.reminder === "string" && /^\d{2}:\d{2}$/.test(h.reminder)) ? h.reminder : "07:15",
-    intervalNum: (typeof h.intervalNum === "number" && h.intervalNum >= 15) ? h.intervalNum : (category==="Break from screen"?30:60),
-    intervalUnit: (h.intervalUnit === "hours" || h.intervalUnit === "minutes") ? h.intervalUnit : (category==="Break from screen"?"minutes":"hours"),
-    windowFrom: /^\d{2}:\d{2}$/.test(h.windowFrom) ? h.windowFrom : "09:00",
-    windowTo: /^\d{2}:\d{2}$/.test(h.windowTo) ? h.windowTo : "21:00",
+    reminder: isValidTime(h.reminder) ? h.reminder : "07:15",
+    intervalNum: intervalNum,
+    intervalUnit: unit,
+    windowFrom: isValidTime(h.windowFrom) ? h.windowFrom : "09:00",
+    windowTo: isValidTime(h.windowTo) ? h.windowTo : "21:00",
     createdAt: isDateKey(h.createdAt) ? h.createdAt : todayKey()
   };
 }
@@ -686,10 +770,12 @@ document.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", 
 $("#confirm").addEventListener("click", () => {
   if(!pickerTarget){ show("home"); return; }
   playClick(); vibrate(8);
-  writeDayExercises(pickerTarget.key, pickerTarget.habitId, [...picked], dayEntry(pickerTarget.key, pickerTarget.habitId));
+  const t = pickerTarget;
+  const ok = commitData(() => {
+    writeDayExercises(t.key, t.habitId, [...picked], dayEntry(t.key, t.habitId));
+  });
   pickerTarget = null;
-  saveData();
-  show("home");
+  if(ok) show("home");
 });
 
 /* ---------- 6. THE NEW HABIT FORM ---------- */
@@ -790,36 +876,39 @@ $("#saveHabit").addEventListener("click", () => {
     if(mins < 15){ formError("Interval must be at least 15 minutes."); return; }
     if(window.Notification && Notification.permission === "default") Notification.requestPermission();
   }
-  const editing = editingId ? data.habits.find(h => h.id === editingId) : null;
-  if(editing){
-    // Update in place: same id, same createdAt, log history untouched.
-    editing.name = f.name;
-    editing.icon = f.icon;
-    editing.category = f.category;
-    editing.type = f.type;
-    editing.days = f.days;
-    editing.reminder = f.reminder;
-    editing.intervalNum = f.intervalNum; editing.intervalUnit = f.intervalUnit;
-    editing.windowFrom = f.windowFrom; editing.windowTo = f.windowTo;
-  }else{
-    data.habits.push({
-      id: makeId(),
-      name: f.name,
-      icon: f.icon,
-      type: f.type,
-      days: f.days,
-      reminder: f.reminder,
-      category: f.category,
-      intervalNum: f.intervalNum, intervalUnit: f.intervalUnit,
-      windowFrom: f.windowFrom, windowTo: f.windowTo,
-      createdAt: todayKey()
-    });
-  }
+  if(!editingId && data.habits.length >= MAX_HABITS){ formError("Maximum of 100 habits reached."); return; }
+  const saved = commitData(() => {
+    const editing = editingId ? data.habits.find(h => h.id === editingId) : null;
+    if(editing){
+      // Update in place: same id, same createdAt, log history untouched.
+      editing.name = f.name.slice(0, 100);
+      editing.icon = f.icon;
+      editing.category = f.category;
+      editing.type = f.type;
+      editing.days = f.days;
+      editing.reminder = f.reminder;
+      editing.intervalNum = Number(f.intervalNum) || 1; editing.intervalUnit = f.intervalUnit;
+      editing.windowFrom = f.windowFrom; editing.windowTo = f.windowTo;
+    }else{
+      data.habits.push({
+        id: makeId(),
+        name: f.name.slice(0, 100),
+        icon: f.icon,
+        type: f.type,
+        days: f.days,
+        reminder: f.reminder,
+        category: f.category,
+        intervalNum: Number(f.intervalNum) || 1, intervalUnit: f.intervalUnit,
+        windowFrom: f.windowFrom, windowTo: f.windowTo,
+        createdAt: todayKey()
+      });
+    }
+  });
+  if(!saved) return;
   const todayWd = weekdayOf(todayKey());
   const notDueToday = f.days.indexOf(todayWd) < 0;
   const dayNames = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
   const dayList = f.days.slice().sort((a,b) => a - b).map(d => dayNames[d]).join(", ");
-  saveData();
   resetForm();
   playConfirm(); vibrate(8);
   show("home");
@@ -987,12 +1076,14 @@ $("#items").addEventListener("click", e => {
   if(!e.target.closest("#addCustom")) return;
   const h = pickerTarget ? data.habits.find(x => x.id === pickerTarget.habitId) : null;
   const isStudy = !!(h && (h.category === "Study" || h.type === "items"));
-  const name = (prompt(isStudy ? "Topic name:" : "Exercise name (no sets or reps):") || "").trim();
-  if(!name) return;
+  const name = (prompt(isStudy ? "Topic name:" : "Exercise name (no sets or reps):") || "").trim().slice(0, 40);
+  if(!name || !isSafeKey(group)) return;
   // Remember the custom exercise so it is still there after a refresh.
-  if(!Array.isArray(data.customExercises[group])) data.customExercises[group] = [];
-  if(data.customExercises[group].indexOf(name) < 0) data.customExercises[group].push(name);
-  saveData();
+  const ok = commitData(() => {
+    if(!Array.isArray(data.customExercises[group])) data.customExercises[group] = [];
+    if(data.customExercises[group].indexOf(name) < 0) data.customExercises[group].push(name);
+  });
+  if(!ok) return;
   picked.add(name);
   renderItems(); renderSlip();
 });
@@ -1012,8 +1103,7 @@ function formatDay(key){
 function repeatLastWorkout(habitId, key){
   const names = lastWorkoutNames(habitId, key);
   if(!names) return;
-  writeDayExercises(key, habitId, names, dayEntry(key, habitId));
-  saveData();
+  if(!commitData(() => writeDayExercises(key, habitId, names, dayEntry(key, habitId)))) return;
   renderHome();
 }
 
@@ -1122,11 +1212,14 @@ $("#habitList").addEventListener("change", e => {
   billTimer = null;
   const today = todayKey();
   const doneBefore = allDoneToday(today);            // was the whole day already done?
+  const snap = JSON.stringify(data);
   if(h.type === "gym" || h.type === "items") setDone(h, today, box.checked, exercise);
   else setDone(h, today, box.checked);
+  const ok = saveData();
+  if(!ok) data = JSON.parse(snap);
+  if(!ok){ box.checked = !box.checked; return; }
   playTick(box.checked);
   vibrate(15);
-  saveData();
   renderHome();
   focusCheckbox(habitId, exercise);                  // keep keyboard focus where it was
   // The bill opens only when THIS tick finished the day.
@@ -1167,9 +1260,8 @@ $("#habitList").addEventListener("click", e => {
   const h = data.habits.find(x => x.id === btn.dataset.id);
   if(!h) return;
   if(!confirm('Delete "' + h.name + '"?')) return;
+  if(!commitData(() => { data.habits = data.habits.filter(x => x.id !== h.id); })) return;
   playDelete(); vibrate(40);
-  data.habits = data.habits.filter(x => x.id !== h.id);
-  saveData();
   renderHome();
 });
 
@@ -1674,82 +1766,105 @@ function exportBackup(){
   }
 }
 
+const ALLOWED_ROOT_KEYS = new Set(["app", "version", "exportedAt", "data", "settings"]);
+const ALLOWED_DATA_KEYS = new Set(["habits", "log", "customExercises"]);
+const ALLOWED_HABIT_KEYS = new Set(["id","name","icon","category","type","days","reminder","intervalNum","intervalUnit","windowFrom","windowTo","createdAt","exercises"]);
+const ALLOWED_SETTINGS_KEYS = new Set(["sound", "vibration"]);
+
+function hasPoisonKey(val, depth = 0){
+  if(depth > 20) return true;
+  if(!val || typeof val !== "object") return false;
+  if(Array.isArray(val)) return val.some(v => hasPoisonKey(v, depth + 1));
+  const names = Object.getOwnPropertyNames(val);
+  for(const k of names){
+    if(POISON_KEYS.has(k)) return true;
+    if(hasPoisonKey(val[k], depth + 1)) return true;
+  }
+  return false;
+}
+
 // Strictly validate an imported backup object before anything is changed.
 function validateImport(parsed){
-  if(!parsed || typeof parsed !== "object") return { ok: false, msg: "Backup file is not a JSON object." };
+  if(!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return { ok: false, msg: "Backup file is not a JSON object." };
+  if(hasPoisonKey(parsed)) return { ok: false, msg: "Backup contains disallowed keys." };
+  for(const k of Object.keys(parsed)){
+    if(!ALLOWED_ROOT_KEYS.has(k)) return { ok: false, msg: "Backup contains unknown property: " + k };
+  }
   if(parsed.app !== "punchout") return { ok: false, msg: "Not a Punchout backup file." };
   if(parsed.version !== 1) return { ok: false, msg: "Unsupported backup version." };
-  if(!parsed.data || typeof parsed.data !== "object") return { ok: false, msg: "Backup is missing the data section." };
+  if(parsed.exportedAt !== undefined && (typeof parsed.exportedAt !== "string" || parsed.exportedAt.length > 64)) return { ok: false, msg: "Invalid backup timestamp." };
+  if(!parsed.data || typeof parsed.data !== "object" || Array.isArray(parsed.data)) return { ok: false, msg: "Backup is missing the data section." };
+  for(const k of Object.keys(parsed.data)){
+    if(!ALLOWED_DATA_KEYS.has(k)) return { ok: false, msg: "Backup data contains unknown property: " + k };
+  }
   if(!Array.isArray(parsed.data.habits)) return { ok: false, msg: "Backup is missing the habits list." };
+  if(parsed.data.habits.length > MAX_HABITS) return { ok: false, msg: "Backup exceeds maximum of 100 habits." };
+  for(let i = 0; i < parsed.data.habits.length; i++){
+    const h = parsed.data.habits[i];
+    if(!h || typeof h !== "object" || Array.isArray(h)) return { ok: false, msg: "Invalid habit entry at index " + i + "." };
+    for(const k of Object.keys(h)){
+      if(!ALLOWED_HABIT_KEYS.has(k)) return { ok: false, msg: "Unknown habit property: " + k };
+    }
+    if(typeof h.name !== "string" || !h.name.trim() || h.name.trim().length > 100) return { ok: false, msg: "Invalid habit name at index " + i + "." };
+    if(h.category !== undefined && (typeof h.category !== "string" || CATEGORIES.indexOf(h.category) < 0)) return { ok: false, msg: "Invalid habit category at index " + i + "." };
+    if(h.type !== undefined && h.type !== "normal" && h.type !== "gym" && h.type !== "items") return { ok: false, msg: "Invalid habit type at index " + i + "." };
+    if(!Array.isArray(h.days) || h.days.length > 7 || h.days.some(d => !Number.isInteger(d) || d < 0 || d > 6)) return { ok: false, msg: "Invalid habit days at index " + i + "." };
+    if(h.reminder !== undefined && !isValidTime(h.reminder)) return { ok: false, msg: "Invalid reminder time at index " + i + "." };
+    if(h.windowFrom !== undefined && !isValidTime(h.windowFrom)) return { ok: false, msg: "Invalid window start time at index " + i + "." };
+    if(h.windowTo !== undefined && !isValidTime(h.windowTo)) return { ok: false, msg: "Invalid window end time at index " + i + "." };
+    if(h.intervalUnit !== undefined && h.intervalUnit !== "minutes" && h.intervalUnit !== "hours") return { ok: false, msg: "Invalid interval unit at index " + i + "." };
+    if(h.intervalNum !== undefined){
+      const minV = h.intervalUnit === "minutes" ? 15 : 1;
+      if(typeof h.intervalNum !== "number" || !Number.isFinite(h.intervalNum) || h.intervalNum < minV || h.intervalNum > 1440) return { ok: false, msg: "Invalid interval value at index " + i + "." };
+    }
+    if(h.createdAt !== undefined && !isDateKey(h.createdAt)) return { ok: false, msg: "Invalid createdAt date at index " + i + "." };
+  }
   if(!parsed.data.log || typeof parsed.data.log !== "object" || Array.isArray(parsed.data.log)) return { ok: false, msg: "Backup is missing the log." };
+  if(Object.keys(parsed.data.log).length > MAX_LOG_DAYS) return { ok: false, msg: "Backup exceeds maximum log history." };
+  if(parsed.data.customExercises !== undefined && (!parsed.data.customExercises || typeof parsed.data.customExercises !== "object" || Array.isArray(parsed.data.customExercises))) return { ok: false, msg: "Invalid customExercises section." };
+  if(parsed.settings !== undefined){
+    if(!parsed.settings || typeof parsed.settings !== "object" || Array.isArray(parsed.settings)) return { ok: false, msg: "Invalid settings section." };
+    for(const k of Object.keys(parsed.settings)){
+      if(!ALLOWED_SETTINGS_KEYS.has(k) || typeof parsed.settings[k] !== "boolean") return { ok: false, msg: "Invalid setting: " + k };
+    }
+  }
   return { ok: true };
 }
 
 // Replace app data with repaired import data, then redraw Home.
-// Sanitises everything: habits via fixHabit, customExercises as trimmed
-// non-empty strings (max 40 chars), log as YYYY-MM-DD keys with boolean
-// values (normal) or name->boolean objects (gym). Drops anything else.
 function applyImport(parsed){
-  const d = parsed.data;
-  const habits = Array.isArray(d.habits)
-    ? d.habits.filter(h => h && typeof h === "object").map(fixHabit).filter(h => h)
-    : [];
-
-  const rawLog = (d.log && typeof d.log === "object" && !Array.isArray(d.log)) ? d.log : {};
-  const log = {};
-  Object.keys(rawLog).forEach(key => {
-    if(!isDateKey(key)) return;
-    const day = rawLog[key];
-    if(!day || typeof day !== "object" || Array.isArray(day)) return;
-    const cleanDay = {};
-    Object.keys(day).forEach(habitId => {
-      const val = day[habitId];
-      if(typeof val === "boolean"){
-        cleanDay[habitId] = val;
-      }else if(val && typeof val === "object" && !Array.isArray(val)){
-        const cleanEntry = {};
-        Object.keys(val).forEach(name => {
-          const v = val[name];
-          if(typeof v === "boolean") cleanEntry[name] = v;
-        });
-        if(Object.keys(cleanEntry).length) cleanDay[habitId] = cleanEntry;
-      }
-    });
-    if(Object.keys(cleanDay).length) log[key] = cleanDay;
+  const next = sanitizeStore(parsed.data);
+  const ok = commitData(() => {
+    data.habits = next.habits;
+    data.log = next.log;
+    data.customExercises = next.customExercises;
   });
-
-  const rawEx = (d.customExercises && typeof d.customExercises === "object" && !Array.isArray(d.customExercises)) ? d.customExercises : {};
-  const customExercises = {};
-  Object.keys(rawEx).forEach(group => {
-    const arr = rawEx[group];
-    if(!Array.isArray(arr)) return;
-    const clean = [...new Set(arr.filter(n => typeof n === "string")
-      .map(n => n.trim())
-      .filter(n => n.length > 0 && n.length <= 40))];
-    if(clean.length) customExercises[group] = clean;
-  });
-
-  data.habits = habits;
-  data.log = log;
-  data.customExercises = customExercises;
-
-  saveData();
+  if(!ok) return false;
   renderHome();
+  return true;
 }
 
 // Import from pasted text or a chosen file.
 function handleImportText(text){
   $("#importNote").textContent = "";
+  if(typeof text !== "string" || !text.trim()){
+    $("#importNote").textContent = "Backup is empty.";
+    return;
+  }
+  if(text.length > MAX_IMPORT_BYTES){
+    $("#importNote").textContent = "Backup is too large (max 512 KB).";
+    return;
+  }
   let parsed;
   try{
     parsed = JSON.parse(text);
   }catch(e){
-    $("#importNote").textContent = "Invalid JSON: " + esc(e.message);
+    $("#importNote").textContent = "Invalid JSON: " + e.message;
     return;
   }
   const check = validateImport(parsed);
   if(!check.ok){
-    $("#importNote").textContent = esc(check.msg);
+    $("#importNote").textContent = check.msg;
     return;
   }
   if(!confirm("This replaces all data on this device. Continue?")) return;
@@ -1774,7 +1889,10 @@ function handleImportText(text){
     $("#undoRestore").hidden = false;
   }catch(e){}
 
-  applyImport(parsed);
+  if(!applyImport(parsed)){
+    $("#importNote").textContent = "Storage is full. Restore failed.";
+    return;
+  }
   $("#importNote").textContent = "Restore complete. Home redrawn.";
 }
 
@@ -1782,6 +1900,10 @@ $("#exportBackup").addEventListener("click", exportBackup);
 $("#importFile").addEventListener("change", (e) => {
   const file = e.target.files && e.target.files[0];
   if(!file) return;
+  if(file.size > MAX_IMPORT_BYTES){
+    $("#importNote").textContent = "Backup file is too large (max 512 KB).";
+    return;
+  }
   const reader = new FileReader();
   reader.onload = () => handleImportText(reader.result);
   reader.readAsText(file);
