@@ -17,3 +17,6 @@ Open Settings -> Backup. Export downloads a JSON file. Import restores from a fi
 
 ## Live link
 https://marco07-tech.github.io/Punchout/
+
+## Future scope
+A Capacitor Android wrapper is scaffolded but not built or tested. No APK is provided.

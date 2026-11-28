@@ -791,8 +791,6 @@ $("#saveHabit").addEventListener("click", () => {
       days: f.days,
       reminder: f.reminder,
       category: f.category,
-      icon: f.icon,
-      type: f.type,
       intervalNum: f.intervalNum, intervalUnit: f.intervalUnit,
       windowFrom: f.windowFrom, windowTo: f.windowTo,
       createdAt: todayKey()
@@ -815,7 +813,6 @@ function updateIntervalFields(){
 function updateRestNote(){
   const cat = document.querySelector('input[name="category"]:checked');
   $("#restNote").hidden = !(cat && cat.value === "Gym");
-  updateIntervalFields();
 }
 // Slot keys for one habit on one date (for reuse by a native layer).
 function computeNextSlots(habit, now){
@@ -863,7 +860,7 @@ $("#catPicker").addEventListener("change", e => {
   } else {
     if(r.value !== "Custom") lastAutoName = r.value;
   }
-  updateRestNote();
+  updateRestNote(); updateIntervalFields();
 });
 $("#newHabit").addEventListener("click", e => {
   if(e.target.closest(".chip, .tile")){ playClick(); vibrate(8); }
