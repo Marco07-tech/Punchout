@@ -281,14 +281,91 @@ async function run() {
       await page.reload();
       await page.click('.nav [data-go="stats"]');
       const txt = await page.textContent("#statsBody");
+      assert.match(txt, /Best streak2/);
+      assert.match(txt, /Today50%/);
       assert.match(txt, /Last 7 days/);
-      // Code: Nov 9..12 = 4, missed Nov 13, Nov 14..15 = 2 -> Current 2, Best 4, Last 30 days 86% (6/7)
-      assert.match(txt, /CodeCurrent streak2Best streak4Last 30 days86% \(6\/7\)/);
-      // Water: Nov 9..10 = 2, missed 11..13, Nov 14 = 1, Nov 15 pending -> Current 1, Best 2, Last 30 days 43% (3/7)
-      assert.match(txt, /WaterCurrent streak1Best streak2Last 30 days43% \(3\/7\)/);
+      assert.doesNotMatch(txt, /Current streak/);
+      // Code: current 2, 30-day 86% (6/7)
+      // Water: current 1, 30-day 43% (3/7)
+      const rows = await page.locator("#statsBody .stats-row").allTextContents();
+      assert.strictEqual(rows.length, 2);
+      assert.match(rows[0], /Code.*2.*86%/);
+      assert.match(rows[1], /Water.*1.*43%/);
+      // Verify flame icon in compact rows and single-line height
+      assert.strictEqual(await page.locator('#statsBody .stats-row use[href="#flame"]').count(), 2);
+      const rowHeight = await page.locator("#statsBody .stats-row").first().evaluate(el => el.getBoundingClientRect().height);
+      assert(rowHeight < 56, `Expected compact single-line row (< 56px), got ${rowHeight}px`);
       // Bar chart bars must actually render visible heights (> 20px for 100% days)
       const barH = await page.locator('#statsBody [title="100%"]').first().evaluate(el => el.getBoundingClientRect().height);
       assert(barH > 40, `Expected 100% bar height > 40px, got ${barH}px`);
+    });
+
+    await test("Reset stats clears history, keeps habits, supports undo and cancel, and works after reload", async (page) => {
+      await page.goto(APP_URL + "?date=2026-11-15");
+      // When no history, Reset stats button must be hidden
+      await page.click('.nav [data-go="newHabit"]');
+      await page.click('input[name="category"][value="Code"]', { force: true });
+      await page.click("#everyDay");
+      await page.click("#saveHabit");
+      await page.click('.nav [data-go="stats"]');
+      assert.notStrictEqual(await page.getAttribute("#resetStats", "hidden"), null, "Reset stats must be hidden when no history");
+
+      // Seed history
+      await page.evaluate(() => {
+        data.log = {
+          "2026-11-14": { [data.habits[0].id]: true },
+          "2026-11-15": { [data.habits[0].id]: true }
+        };
+        saveData();
+        renderStats();
+      });
+      assert.strictEqual(await page.getAttribute("#resetStats", "hidden"), null, "Reset stats must be visible when history exists");
+
+      // Cancel changes nothing
+      let dialogMsg = "";
+      page.once("dialog", d => { dialogMsg = d.message(); d.dismiss(); });
+      await page.click("#resetStats");
+      assert.match(dialogMsg, /streaks/i);
+      assert.strictEqual(await page.evaluate(() => Object.keys(data.log).length), 2);
+
+      // Confirm reset: clears history, keeps habits, shows banner with Undo
+      page.once("dialog", d => d.accept());
+      await page.click("#resetStats");
+      assert.strictEqual(await page.evaluate(() => Object.keys(data.log).length), 0);
+      assert.strictEqual(await page.evaluate(() => data.habits.length), 1);
+      assert.notStrictEqual(await page.getAttribute("#resetStats", "hidden"), null);
+      assert.match(await page.textContent("#banner"), /Stats reset/);
+      assert.strictEqual(await page.textContent("#bannerAction"), "Undo");
+      assert.strictEqual(await page.textContent("#fracText"), "0/1");
+
+      // Undo via banner brings history back
+      await page.click("#bannerAction");
+      assert.strictEqual(await page.evaluate(() => Object.keys(data.log).length), 2);
+      assert.strictEqual(await page.getAttribute("#resetStats", "hidden"), null);
+      assert.strictEqual(await page.textContent("#fracText"), "1/1");
+
+      // Reset again, reload page, then undo via Settings -> Backup -> Undo last restore
+      page.once("dialog", d => d.accept());
+      await page.click("#resetStats");
+      await page.reload();
+      assert.strictEqual(await page.evaluate(() => Object.keys(data.log).length), 0);
+      assert.strictEqual(await page.evaluate(() => data.habits.length), 1);
+      await page.click('#home [data-go="settings"]');
+      await page.click("#backupDetails summary");
+      assert.strictEqual(await page.getAttribute("#undoRestore", "hidden"), null);
+      await page.click("#undoRestore");
+      await page.click("#settingsClose");
+      assert.strictEqual(await page.evaluate(() => Object.keys(data.log).length), 2);
+    });
+
+    await test("Logo favicon, apple-touch-icon, and Home header logo render cleanly", async (page) => {
+      await page.goto(APP_URL + "?date=2026-11-09");
+      const iconHref = await page.getAttribute('link[rel="icon"]', "href");
+      assert(iconHref && iconHref.startsWith("data:image/svg+xml,"), "Favicon must be inline SVG data URI");
+      const appleHref = await page.getAttribute('link[rel="apple-touch-icon"]', "href");
+      assert.strictEqual(appleHref, "assets/icon-192.png");
+      const headerLogoLoaded = await page.locator("#home header.top img").evaluate(el => el.complete && el.naturalWidth > 0);
+      assert.strictEqual(headerLogoLoaded, true, "Home header logo must load");
     });
 
     await test("Settings: sound, vibration, export, import, restore, undo restore", async (page) => {

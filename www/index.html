@@ -6,6 +6,8 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none';">
 <meta name="referrer" content="no-referrer">
 <title>Punchout</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20512%20512%22%20width%3D%22512%22%20height%3D%22512%22%20role%3D%22img%22%20aria-label%3D%22Punchout%20logo%22%3E%3Crect%20width%3D%22512%22%20height%3D%22512%22%20fill%3D%22%23F2E8DA%22%2F%3E%3Cpath%20transform%3D%22translate(18%2018)%22%20fill%3D%22%233B2418%22%20d%3D%22M146%20104H366V392L346%20372L326%20392L306%20372L286%20392L266%20372L246%20392L226%20372L206%20392L186%20372L166%20392L146%20372Z%22%2F%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20stroke%3D%22%233B2418%22%20stroke-width%3D%2214%22%20stroke-linejoin%3D%22miter%22%20d%3D%22M146%20104H366V392L346%20372L326%20392L306%20372L286%20392L266%20372L246%20392L226%20372L206%20392L186%20372L166%20392L146%20372Z%22%2F%3E%3Ccircle%20cx%3D%22256%22%20cy%3D%22204%22%20r%3D%2250%22%20fill%3D%22%238EC5FF%22%20stroke%3D%22%233B2418%22%20stroke-width%3D%2214%22%2F%3E%3Cpath%20d%3D%22M232%20204L250%20224L284%20182%22%20fill%3D%22none%22%20stroke%3D%22%233B2418%22%20stroke-width%3D%2216%22%20stroke-linecap%3D%22square%22%20stroke-linejoin%3D%22miter%22%2F%3E%3Crect%20x%3D%22196%22%20y%3D%22290%22%20width%3D%22120%22%20height%3D%2214%22%20fill%3D%22%233B2418%22%2F%3E%3Crect%20x%3D%22196%22%20y%3D%22322%22%20width%3D%2276%22%20height%3D%2214%22%20fill%3D%22%233B2418%22%2F%3E%3C%2Fsvg%3E">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" crossorigin="anonymous" media="print" onload="this.media='all'">
@@ -182,6 +184,7 @@ button{background:none;border:0;cursor:pointer}
 <!-- ================= HOME ================= -->
 <main class="screen on" id="home">
   <header class="top">
+    <img src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20512%20512%22%20width%3D%22512%22%20height%3D%22512%22%20role%3D%22img%22%20aria-label%3D%22Punchout%20logo%22%3E%3Crect%20width%3D%22512%22%20height%3D%22512%22%20fill%3D%22%23F2E8DA%22%2F%3E%3Cpath%20transform%3D%22translate(18%2018)%22%20fill%3D%22%233B2418%22%20d%3D%22M146%20104H366V392L346%20372L326%20392L306%20372L286%20392L266%20372L246%20392L226%20372L206%20392L186%20372L166%20392L146%20372Z%22%2F%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20stroke%3D%22%233B2418%22%20stroke-width%3D%2214%22%20stroke-linejoin%3D%22miter%22%20d%3D%22M146%20104H366V392L346%20372L326%20392L306%20372L286%20392L266%20372L246%20392L226%20372L206%20392L186%20372L166%20392L146%20372Z%22%2F%3E%3Ccircle%20cx%3D%22256%22%20cy%3D%22204%22%20r%3D%2250%22%20fill%3D%22%238EC5FF%22%20stroke%3D%22%233B2418%22%20stroke-width%3D%2214%22%2F%3E%3Cpath%20d%3D%22M232%20204L250%20224L284%20182%22%20fill%3D%22none%22%20stroke%3D%22%233B2418%22%20stroke-width%3D%2216%22%20stroke-linecap%3D%22square%22%20stroke-linejoin%3D%22miter%22%2F%3E%3Crect%20x%3D%22196%22%20y%3D%22290%22%20width%3D%22120%22%20height%3D%2214%22%20fill%3D%22%233B2418%22%2F%3E%3Crect%20x%3D%22196%22%20y%3D%22322%22%20width%3D%2276%22%20height%3D%2214%22%20fill%3D%22%233B2418%22%2F%3E%3C%2Fsvg%3E" alt="" aria-hidden="true" width="40" height="40" style="border:3px solid var(--ink);box-shadow:3px 3px 0 var(--ink);flex-shrink:0">
     <div class="t"><small class="up">Punchout</small><h1>Today</h1></div>
     <button class="sq dk" data-go="settings" aria-label="Settings"><svg class="i"><use href="#user"/></svg></button>
   </header>
@@ -216,6 +219,7 @@ button{background:none;border:0;cursor:pointer}
     <div class="t"><small class="up">Punchout</small><h1>Stats</h1></div>
   </header>
   <div id="statsBody"></div>
+  <button class="btn" id="resetStats" style="margin-top:24px" hidden>Reset stats</button>
 </main>
 
 <!-- ================= NEW HABIT ================= -->
@@ -858,11 +862,28 @@ function openEdit(h){
 }
 
 let bannerTimer = null;
-function showBanner(msg, ms = 4000){
+function showBanner(msg, ms = 4000, action){
   clearTimeout(bannerTimer);
-  $("#banner").textContent = msg;
-  $("#banner").hidden = false;
-  bannerTimer = setTimeout(() => { $("#banner").hidden = true; }, ms);
+  const el = $("#banner");
+  el.textContent = "";
+  const span = document.createElement("span");
+  span.textContent = msg;
+  el.appendChild(span);
+  if(action && action.label && typeof action.onClick === "function"){
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "bannerAction";
+    btn.textContent = action.label;
+    btn.style.cssText = "margin-left:10px;padding:4px 10px;background:var(--w);color:var(--ink);border:2px solid var(--ink);font-weight:700;font-size:12px;text-transform:uppercase;cursor:pointer";
+    btn.addEventListener("click", () => {
+      clearTimeout(bannerTimer);
+      el.hidden = true;
+      action.onClick();
+    });
+    el.appendChild(btn);
+  }
+  el.hidden = false;
+  bannerTimer = setTimeout(() => { el.hidden = true; }, ms);
 }
 
 // Save a new habit.
@@ -1269,20 +1290,27 @@ $("#habitList").addEventListener("click", e => {
 function renderStats(){
   if(!data.habits.length){
     $("#statsBody").innerHTML = '<div class="card" style="text-align:center"><b class="up">Tap + to add your first habit.</b></div>';
+    updateResetStatsBtn();
     return;
   }
   const today = todayKey();
-  let chart = '<div class="card"><b class="up">Last 7 days</b><div style="display:flex;align-items:flex-end;gap:6px;height:120px;margin-top:12px">';
+  const todaySt = dayStatus(today);
+  const todayPct = todaySt.total ? Math.round(todaySt.done/todaySt.total*100) : 0;
+  const best = computeBestStreak(today);
+  let out = '<div style="display:flex;gap:12px;margin-bottom:14px">';
+  out += '<div class="card" style="flex:1;padding:12px;display:flex;justify-content:space-between;align-items:center"><span class="up" style="font-size:11px">Best streak</span><b class="mono" style="font-size:18px">' + best + '</b></div>';
+  out += '<div class="card" style="flex:1;padding:12px;display:flex;justify-content:space-between;align-items:center"><span class="up" style="font-size:11px">Today</span><b class="mono" style="font-size:18px">' + todayPct + '%</b></div>';
+  out += '</div>';
+  out += '<div class="card"><b class="up">Last 7 days</b><div style="display:flex;align-items:flex-end;gap:6px;height:120px;margin-top:12px">';
   for(let i=6;i>=0;i--){
     const key = keyOf(addDays(parseKey(today), -i));
     const st = dayStatus(key);
     const pct = st.total ? Math.round(st.done/st.total*100) : 0;
-    chart += `<div style="flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;gap:4px;text-align:center"><div style="flex:1;display:flex;align-items:flex-end"><div style="width:100%;height:${Math.max(4,pct)}%;background:var(--blue);border:2px solid var(--ink)" title="${pct}%"></div></div><small>${key.slice(8)}</small></div>`;
+    out += `<div style="flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;gap:4px;text-align:center"><div style="flex:1;display:flex;align-items:flex-end"><div style="width:100%;height:${Math.max(4,pct)}%;background:var(--blue);border:2px solid var(--ink)" title="${pct}%"></div></div><small>${key.slice(8)}</small></div>`;
   }
-  chart += '</div></div>';
-  const rows = data.habits.map(h => {
+  out += '</div></div>';
+  data.habits.forEach(h => {
     const st = walkHabitStreak(h, today);
-    const cur = st.current, best = st.best;
     let done = 0, total = 0;
     for(let i=29;i>=0;i--){
       const key = keyOf(addDays(parseKey(today), -i));
@@ -1290,10 +1318,48 @@ function renderStats(){
       total++; if(isHabitDone(h,key)) done++;
     }
     const rate = total ? Math.round(done/total*100) : 0;
-    return `<div class="card" style="margin-top:12px"><b>${esc(h.name)}</b><div class="slip"><span>Current streak</span><span>${cur}</span></div><div class="slip"><span>Best streak</span><span>${best}</span></div><div class="slip"><span>Last 30 days</span><span>${rate}% (${done}/${total})</span></div></div>`;
-  }).join("");
-  $("#statsBody").innerHTML = chart + rows;
+    out += `<div class="stats-row" style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:8px 10px;background:var(--w);border:3px solid var(--ink)"><span style="flex:1;min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(h.name)}</span><span class="mono" style="display:inline-flex;align-items:center;gap:3px;font-size:13px;flex-shrink:0"><svg class="i" style="width:14px;height:14px"><use href="#flame"/></svg>${st.current}</span><span class="mono" style="font-size:13px;flex-shrink:0;min-width:36px;text-align:right">${rate}%</span></div>`;
+  });
+  $("#statsBody").innerHTML = out;
+  updateResetStatsBtn();
 }
+
+/* ---------- 8c. RESET STATS ---------- */
+function updateResetStatsBtn(){
+  const hasLog = Object.keys(data.log).length > 0;
+  $("#resetStats").hidden = !hasLog;
+}
+$("#resetStats").addEventListener("click", () => {
+  if(!Object.keys(data.log).length) return;
+  if(!confirm("Clear all completion history? All streaks will also reset.")) return;
+  try{
+    const prevCopy = {
+      app: "punchout",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      data: {
+        habits: data.habits,
+        log: data.log,
+        customExercises: data.customExercises
+      },
+      settings: {
+        sound: settings.sound,
+        vibration: settings.vibration
+      }
+    };
+    localStorage.setItem("habitStore.v1.prev", JSON.stringify(prevCopy));
+  }catch(e){}
+  if(!commitData(() => { data.log = {}; })) return;
+  renderHome();
+  renderStats();
+  showBanner("Stats reset", 6000, {
+    label: "Undo",
+    onClick: () => {
+      undoRestore();
+      renderStats();
+    }
+  });
+});
 
 /* ---------- 9. TODAY'S BILL ---------- */
 function buildReceipt(){
@@ -1919,6 +1985,7 @@ function undoRestore(){
   try{
     const parsed = JSON.parse(prev);
     applyImport(parsed);
+    renderStats();
     localStorage.removeItem("habitStore.v1.prev");
     $("#undoRestore").hidden = true;
     $("#importNote").textContent = "Undone last restore.";
