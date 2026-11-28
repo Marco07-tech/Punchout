@@ -988,7 +988,7 @@ function habitCard(h, today){
     <div class="tx"><div class="hn">${esc(h.name)}</div><div class="hs"><svg class="i" style="width:14px;height:14px"><use href="#flame"/></svg>${streak} day streak</div></div>
     <button class="del" data-edit="${esc(h.id)}" aria-label="Edit ${esc(h.name)}"><svg class="i"><use href="#pencil"/></svg></button>
     <button class="del" data-id="${esc(h.id)}" aria-label="Delete ${esc(h.name)}"><svg class="i"><use href="#trash"/></svg></button>
-    ${h.type === "gym" ? "" : `<input class="check" type="checkbox" data-h="${esc(h.id)}" aria-label="${esc(h.name)}"${done ? " checked" : ""}>`}
+    ${h.type === "gym" || h.type === "items" ? "" : `<input class="check" type="checkbox" data-h="${esc(h.id)}" aria-label="${esc(h.name)}"${done ? " checked" : ""}>`}
   </div>`;
   if(h.type !== "gym" && h.type !== "items") return `<article class="card habit${done ? " ok" : ""}">${head}</article>`;
   const entry = dayEntry(today, h.id) || {};
@@ -1017,7 +1017,8 @@ function habitCard(h, today){
 // The message when there is nothing to show.
 function emptyState(){
   if(!data.habits.length)
-    return `<div class="card" style="text-align:center"><b class="up">Tap + to add your first habit.</b>` +
+    if(data.habits.length && !list.length) return `<div class="card" style="text-align:center"><b class="up">No habits due today. ${data.habits.length} habits are scheduled on other days.</b></div>`;
+  return `<div class="card" style="text-align:center"><b class="up">Tap + to add your first habit.</b>` +
            `<button class="btn" data-go="newHabit" style="margin-top:14px">Add your first habit</button></div>`;
   return `<div class="card" style="text-align:center"><b class="up">Nothing scheduled for today.</b></div>`;
 }
@@ -1074,7 +1075,7 @@ $("#habitList").addEventListener("change", e => {
   if(!h) return;
   const today = todayKey();
   const doneBefore = allDoneToday(today);            // was the whole day already done?
-  if(h.type === "gym") setDone(h, today, box.checked, exercise);
+  if(h.type === "gym" || h.type === "items") setDone(h, today, box.checked, exercise);
   else setDone(h, today, box.checked);
   playTick(box.checked);
   vibrate(15);
