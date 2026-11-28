@@ -5,7 +5,7 @@
   "main": "test-streaks.js",
   "scripts": {
     "sync-web": "node -e \"require('fs').copyFileSync('index.html','www/index.html')\"",
-    "test": "node test-streaks.js && node test-ui.js",
+    "test": "node test-streaks.js && node test-ui.js && node test-security.js",
     "copy-web": "if not exist www mkdir www && copy /y index.html www\\index.html",
     "build:android": "cd android && gradlew assembleDebug"
   },
